@@ -11,3 +11,8 @@ Halaman pintasan untuk membuka halaman admin router rumah.
 
 Impor repo ini di [vercel.com/new](https://vercel.com/new) sebagai proyek statis
 (tanpa framework, tanpa perintah build). `index.html` di root adalah halamannya.
+
+## Status
+
+Terhubung ke proyek Vercel **mywifi-router** (tim rodiiis-projects).
+Setiap push ke branch `main` memicu deployment produksi otomatis.
