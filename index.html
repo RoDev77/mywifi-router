@@ -97,6 +97,7 @@ h1{
 .devhint.warn{color:#d64545;font-weight:700}
 .ppn-note{color:var(--muted);font-size:13px;margin-top:12px;text-align:center}
 .fee-note{color:var(--muted);font-size:12px;margin-top:8px;line-height:1.5}
+.claim-note{color:var(--muted);font-size:12.5px;line-height:1.5;text-align:center;margin-top:10px;background:#eef7f9;border:1px dashed var(--line);border-radius:12px;padding:9px 12px}
 .receipt{
   font-family:ui-monospace,"SF Mono",Consolas,monospace;font-size:15px;
   background:#fff;border:1.5px dashed var(--line);border-radius:16px;
@@ -254,6 +255,7 @@ footer a:hover{color:var(--signal)}
       <p class="qr-caption">Scan pakai GoPay, DANA, OVO, ShopeePay, atau m-banking apa pun yang mendukung QRIS.</p>
       <p class="txn-line">ID Transaksi: <span id="txnIdEl">-</span></p>
       <p class="status pending" id="statusEl">Menunggu pembayaran…</p>
+      <p class="claim-note" id="claimNote" style="display:none">Catatan: SSID &amp; password WiFi akan dikirim ke WhatsApp-mu dalam waktu 1x30 menit setelah pembayaran dikonfirmasi admin.</p>
       <button class="pay" id="claimBtn" style="margin-top:10px">Saya Sudah Bayar</button>
       <a href="#" id="downloadLink" class="download-link">Unduh gambar QR</a>
       <button class="secondary" id="newTxnBtn">Transaksi Baru</button>
@@ -445,6 +447,7 @@ footer a:hover{color:var(--signal)}
       else if (d.status === "claimed") {
         setStatus("claimed", "Menunggu konfirmasi admin…");
         claimBtn.style.display = "none";
+        document.getElementById("claimNote").style.display = "block";
       }
     }, function (e) { console.error("Gagal pantau transaksi:", e); });
   }
@@ -473,6 +476,7 @@ footer a:hover{color:var(--signal)}
     }).then(function () {
       setStatus("claimed", "Menunggu konfirmasi admin…");
       claimBtn.style.display = "none";
+      document.getElementById("claimNote").style.display = "block";
     }).catch(function (e) {
       console.error("Gagal klaim:", e);
       claimBtn.disabled = false;
@@ -516,6 +520,7 @@ footer a:hover{color:var(--signal)}
     }, 60);
 
     claimBtn.style.display = "";
+    document.getElementById("claimNote").style.display = "none";
     claimBtn.disabled = false;
     claimBtn.textContent = "Saya Sudah Bayar";
     setStatus("pending", "Menunggu pembayaran…");

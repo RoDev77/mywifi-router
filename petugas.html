@@ -708,7 +708,7 @@
   const receiptHours         = document.getElementById('receiptHours');
 
   function teksWa(t){
-    return 'Halo, pembayaran Sewa WiFi R STUDIO LABS kamu sudah terkonfirmasi.\nID Transaksi: ' + (t.transactionId || '-') + ' (' + (t.hours ?? '-') + ' jam, Rp ' + formatRp(t.amount) + ')\nSSID: R STUDIO LABS\nPassword: \nTerima kasih!';
+    return 'Halo, pembayaran Sewa WiFi R STUDIO LABS kamu sudah terkonfirmasi.\nID Transaksi: ' + (t.transactionId || '-') + ' (' + (t.hours ?? '-') + ' jam, Rp ' + formatRp(t.amount) + ')\nSSID: R STUDIO LABS\nPassword: \nCatatan: Durasi dimulai ketika admin mengirim pesan ini.\nTerima kasih!';
   }
 
   function gambarStrukBlob(t){
