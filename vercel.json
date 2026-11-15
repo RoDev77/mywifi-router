@@ -7,7 +7,7 @@
     },
     {
       "source": "/home",
-      "destination": "/index.html"
+      "destination": "/"
     },
     {
       "source": "/error",
