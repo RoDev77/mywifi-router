@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin — Sewa WiFi R STUDIO LABS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
+
+<!-- Firebase (compat build, no bundler needed) -->
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+
+<style>
+  :root{
+    --bg:#0e1710; --bg-vignette:#162319;
+    --paper:#f6f1e3; --paper-dim:#ece4d0;
+    --ink:#241f17; --ink-soft:#8c8371;
+    --accent-fill:#b93521; --accent-fill-hover:#a12c1a;
+    --teal:#157a63; --teal-soft:#d9ece5;
+    --amber:#a3760a; --amber-soft:#f3e6c8;
+    --danger:#b93521; --danger-soft:#f3ddd6;
+    --mono:'JetBrains Mono', ui-monospace, monospace;
+    --sans:'Manrope', system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; min-height:100vh; display:flex; align-items:flex-start; justify-content:center;
+    padding:32px 16px 56px;
+    background: radial-gradient(circle at 50% 0%, var(--bg-vignette), var(--bg) 65%);
+    background-color:var(--bg);
+    font-family:var(--sans); color:var(--ink);
+  }
+  .panel{
+    width:100%; max-width:460px; background:var(--paper);
+    padding:30px 26px 34px; box-shadow:0 30px 60px -20px rgba(0,0,0,0.6);
+    border-radius:6px;
+  }
+  .eyebrow{ font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-soft); font-weight:700; text-align:center; margin:0 0 6px; }
+  h1{ font-size:20px; font-weight:800; text-align:center; margin:0 0 18px; letter-spacing:-0.01em; }
+  .divider{ border:none; border-top:2px dashed var(--paper-dim); margin:0 0 22px; }
+
+  .center{ text-align:center; }
+  .muted{ color:var(--ink-soft); font-size:13px; line-height:1.6; }
+
+  button.discord{
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    width:100%; font-family:var(--sans); font-weight:800; font-size:15px;
+    color:#fff; background:#5865F2; border:none; border-radius:6px;
+    padding:14px 18px; cursor:pointer; transition:background .15s ease, transform .1s ease;
+  }
+  button.discord:hover{ background:#4752c4; }
+  button.discord:active{ transform:scale(.98); }
+
+  button.secondary{
+    display:block; width:100%; font-family:var(--sans); font-weight:700; font-size:14px;
+    color:var(--ink); background:transparent; border:2px solid var(--ink); border-radius:6px;
+    padding:11px 18px; margin-top:14px; cursor:pointer; transition:background .15s ease;
+  }
+  button.secondary:hover{ background:var(--paper-dim); }
+
+  button.save{
+    display:block; width:100%; font-family:var(--sans); font-weight:800; font-size:14px;
+    color:var(--paper); background:var(--teal); border:none; border-radius:6px;
+    padding:13px 18px; margin-top:6px; cursor:pointer;
+  }
+  button.save:hover{ background:#0f6552; }
+  button.save:disabled{ opacity:.5; cursor:not-allowed; }
+
+  .profile{ display:flex; align-items:center; gap:12px; margin-bottom:18px; }
+  .profile img{ width:44px; height:44px; border-radius:50%; }
+  .profile .name{ font-weight:800; font-size:15px; }
+  .profile .tag{ font-size:12px; color:var(--ink-soft); font-family:var(--mono); }
+
+  .badge{ display:inline-block; font-size:11px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; padding:4px 10px; border-radius:999px; white-space:nowrap; }
+  .badge--admin{ background:var(--teal-soft); color:var(--teal); }
+  .badge--user{ background:var(--danger-soft); color:var(--danger); }
+  .badge--pending{ background:var(--paper-dim); color:var(--ink-soft); }
+  .badge--claimed{ background:var(--amber-soft); color:var(--amber); }
+  .badge--confirmed{ background:var(--teal-soft); color:var(--teal); }
+
+  label{ display:block; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); margin:14px 0 6px; }
+  input, textarea{
+    width:100%; font-family:var(--mono); font-size:13px; color:var(--ink);
+    background:#fff; border:1px solid var(--paper-dim); border-radius:5px;
+    padding:10px 12px; outline:none;
+  }
+  input:focus, textarea:focus{ border-color:var(--teal); }
+  textarea{ min-height:90px; resize:vertical; }
+
+  .status{ font-size:12.5px; margin-top:10px; min-height:16px; }
+  .status.ok{ color:var(--teal); }
+  .status.err{ color:var(--danger); }
+
+  .hidden{ display:none !important; }
+
+  .setup-banner ol{ padding-left:18px; margin:10px 0; }
+  .setup-banner li{ margin-bottom:8px; font-size:13px; line-height:1.5; }
+  .setup-banner code{ background:var(--paper-dim); padding:2px 5px; border-radius:3px; font-family:var(--mono); font-size:12px; }
+
+  /* ---------- transaksi ---------- */
+  .txn-section-title{
+    font-size:12px; letter-spacing:.08em; text-transform:uppercase; font-weight:700;
+    color:var(--ink-soft); margin:26px 0 10px;
+  }
+  .txn-list{ display:flex; flex-direction:column; gap:8px; max-height:420px; overflow-y:auto; }
+  .txn-item{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    background:#fff; border:1px solid var(--paper-dim); border-radius:6px; padding:10px 12px;
+  }
+  .txn-amount{ font-family:var(--mono); font-weight:700; font-size:14px; }
+  .txn-meta{ font-size:11.5px; color:var(--ink-soft); margin-top:2px; }
+  .txn-id{ font-family:var(--mono); font-size:11px; color:var(--ink-soft); margin-top:3px; letter-spacing:.02em; }
+  .txn-wifi{ font-size:11.5px; color:var(--teal); font-weight:700; margin-top:3px; }
+  .txn-side{ display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+  .txn-actions{ display:flex; align-items:center; gap:6px; }
+  .confirm-btn{
+    font-family:var(--sans); font-weight:700; font-size:12px; color:#fff;
+    background:var(--teal); border:none; border-radius:5px; padding:6px 10px; cursor:pointer;
+  }
+  .confirm-btn:hover{ background:#0f6552; }
+  .confirm-btn:disabled{ opacity:.5; cursor:not-allowed; }
+
+  .admin-notif-bar{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  background:var(--paper-dim); border-radius:6px; padding:10px 12px; margin:14px 0 0;
+  }
+  .admin-notif-bar .status-text{ font-size:12px; color:var(--ink-soft); }
+  .admin-notif-bar .status-text.on{ color:var(--teal); font-weight:700; }
+  button.sound-toggle{
+    font-family:var(--sans); font-weight:700; font-size:12px; color:var(--ink);
+    background:#fff; border:1px solid var(--paper-dim); border-radius:5px;
+    padding:7px 11px; cursor:pointer; white-space:nowrap;
+  }
+  button.sound-toggle:hover{ background:var(--paper-dim); }
+
+  .txn-item.new-txn{ animation: newTxnFlash 1.6s ease; }
+  @keyframes newTxnFlash{
+    0%{ background:var(--teal-soft); border-color:var(--teal); }
+    100%{ background:#fff; border-color:var(--paper-dim); }
+  }
+
+  .print-btn{
+    display:flex; align-items:center; gap:5px;
+    font-family:var(--sans); font-weight:700; font-size:11.5px; color:var(--ink);
+    background:var(--paper-dim); border:1px solid var(--paper-dim); border-radius:5px;
+    padding:6px 9px; cursor:pointer; transition:background .12s ease;
+  }
+  .print-btn:hover{ background:#e2d8bd; }
+  .print-btn svg{ flex-shrink:0; }
+
+  /* ---------- struk cetak (tersembunyi, hanya dipakai saat print) ---------- */
+  #printReceipt{ display:none; }
+  .receipt-card{
+    background: var(--paper);
+    max-width: 380px;
+    margin: 0 auto;
+    padding: 34px 26px 40px;
+    border: 1px solid var(--paper-dim);
+    font-family: var(--sans);
+    color: var(--ink);
+  }
+
+  .receipt-icon{
+    width: 68px; height: 68px; margin: 0 auto 14px; display:block;
+  }
+  .receipt-title{
+    font-size:19px; font-weight:800; text-align:center; color:var(--teal); margin:0 0 4px;
+  }
+  .receipt-merchant{
+    font-size:13px; color:var(--ink-soft); text-align:center; margin:0 0 18px;
+  }
+  .receipt-details{ margin:22px 0 4px; position:relative; }
+  .receipt-row{
+    display:flex; justify-content:space-between; align-items:baseline; gap:14px;
+    padding:11px 0; border-bottom:1px dashed var(--paper-dim); font-size:13px;
+  }
+  .receipt-row:last-child{ border-bottom:none; }
+  .receipt-row .label{ color:var(--ink-soft); font-weight:700; white-space:nowrap; }
+  .receipt-row .value{ font-family:var(--mono); font-weight:700; text-align:right; word-break:break-all; }
+  .receipt-row--amount .value{ font-size:18px; }
+
+  .receipt-stamp-wrap{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    pointer-events:none;
+  }
+  .receipt-stamp{
+    display:inline-flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+    width:190px; height:190px; border-radius:50%;
+    border:3px solid var(--teal);
+    box-shadow: inset 0 0 0 3px var(--paper), inset 0 0 0 5px var(--teal);
+    color:var(--teal); transform:rotate(-14deg); opacity:0.5; mix-blend-mode:multiply;
+  }
+  .receipt-stamp .stamp-brand{
+    font-family:var(--sans); font-weight:800; font-size:11.5px; letter-spacing:.06em; text-align:center; line-height:1.25; padding:0 12px;
+  }
+  .receipt-stamp .stamp-datetime{
+    font-family:var(--mono); font-weight:700; font-size:9.5px; letter-spacing:.02em; text-align:center; padding:0 8px;
+  }
+
+  @media print{
+    @page{ margin: 12mm; }
+    body.is-printing-receipt{ background:#fff; padding:0; display:block; }
+    body.is-printing-receipt .panel{ box-shadow:none; max-width:100%; width:100%; padding:0; }
+    body.is-printing-receipt #app{ display:none !important; }
+    body.is-printing-receipt #printReceipt{ display:block; }
+    body.is-printing-receipt .receipt-card{ border:none; margin:0 auto; }
+  }
+</style>
+</head>
+<body>
+
+<div class="panel">
+
+  <!-- ===== tampil kalau CONFIG belum diisi ===== -->
+  <div id="setupBanner" class="setup-banner" hidden>
+    <p class="eyebrow">Perlu disetel dulu</p>
+    <h1>Setup Discord + Firebase</h1>
+    <ol>
+      <li>Di Discord Developer Portal → aplikasi kasir → OAuth2 → Redirects, tambahkan URL halaman ini: <code>https://mywifi.rstudiolab.tech/petugas</code> (dan <code>https://mywifi-router.vercel.app/petugas</code> kalau mau bisa login dari domain itu juga).</li>
+      <li>Firebase memakai project yang SAMA dengan kasir (<code>kasir-7777</code>) — konfigurasi QRIS, daftar admin (<code>users</code>), dan transaksi dipakai bersama.</li>
+    </ol>
+  </div>
+
+  <!-- ===== app ===== -->
+  <div id="app" hidden>
+    <p class="eyebrow">Panel Admin — R Studio Labs</p>
+    <h1>Admin Sewa WiFi</h1>
+    <hr class="divider" />
+
+    <!-- login screen -->
+    <div id="loginView">
+      <p class="muted center" style="margin-bottom:18px;">Masuk pakai akun Discord untuk mengakses panel ini.</p>
+      <button class="discord" id="loginBtn">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.369a19.79 19.79 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.056 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.372-.291a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.099.246.197.373.291a.077.077 0 0 1-.006.128c-.598.35-1.22.645-1.873.892a.076.076 0 0 0-.04.106c.36.698.772 1.362 1.225 1.994a.077.077 0 0 0 .084.028 19.83 19.83 0 0 0 6.001-3.03.077.077 0 0 0 .032-.055c.5-5.177-.838-9.674-3.548-13.66a.061.061 0 0 0-.031-.028zM8.02 15.331c-1.182 0-2.157-1.085-2.157-2.419 0-1.333.955-2.418 2.157-2.418 1.211 0 2.176 1.094 2.157 2.418 0 1.334-.946 2.419-2.157 2.419zm7.974 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.418 2.157-2.418 1.211 0 2.176 1.094 2.157 2.418 0 1.334-.946 2.419-2.157 2.419z"/></svg>
+        Login dengan Discord
+      </button>
+    </div>
+
+    <!-- loading -->
+    <div id="loadingView" class="hidden center muted">Memeriksa akun...</div>
+
+    <!-- access denied (role != admin) -->
+    <div id="deniedView" class="hidden">
+      <div class="profile">
+        <img id="deniedAvatar" src="" alt="" />
+        <div>
+          <div class="name" id="deniedName"></div>
+          <span class="badge badge--user">User</span>
+        </div>
+      </div>
+      <p class="muted">Akun Discord ini terdaftar sebagai user biasa, bukan admin. Hubungi pemilik toko kalau merasa ini keliru.</p>
+      <button class="secondary" id="logoutBtnDenied">Keluar</button>
+    </div>
+
+    <!-- admin dashboard -->
+    <div id="adminView" class="hidden">
+      <div class="profile">
+        <img id="adminAvatar" src="" alt="" />
+        <div>
+          <div class="name" id="adminName"></div>
+          <span class="badge badge--admin">Admin</span>
+        </div>
+      </div>
+
+      <div class="admin-notif-bar">
+        <span class="status-text" id="adminSoundStatus">Notifikasi suara transaksi baru belum aktif</span>
+        <button type="button" class="sound-toggle" id="enableSoundBtn">🔔 Aktifkan Suara</button>
+      </div>
+
+      <label for="merchantNameInput">Nama Merchant</label>
+      <input id="merchantNameInput" type="text" placeholder="Name Merchant" />
+
+      <label for="staticQrisInput">Kode QRIS Statis (raw text)</label>
+      <textarea id="staticQrisInput" placeholder="ISI DARI QR CODE DECODER"></textarea>
+
+      <button class="save" id="saveBtn">Simpan Konfigurasi</button>
+      <p class="status" id="saveStatus"></p>
+
+      <p class="txn-section-title">Transaksi Masuk</p>
+      <div id="txnList" class="txn-list">
+        <p class="muted">Memuat transaksi...</p>
+      </div>
+
+      <button class="secondary" id="logoutBtnAdmin">Keluar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     STRUK CETAK — hanya tampil & terlihat saat window.print()
+     ============================================================ -->
+<div id="printReceipt">
+  <div class="receipt-card">
+    <svg class="receipt-icon" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+      <path d="M 32.0,2.0 L 38.47,7.85 L 47.0,6.02 L 49.68,14.32 L 57.98,17.0 L 56.15,25.53 L 62.0,32.0 L 56.15,38.47 L 57.98,47.0 L 49.68,49.68 L 47.0,57.98 L 38.47,56.15 L 32.0,62.0 L 25.53,56.15 L 17.0,57.98 L 14.32,49.68 L 6.02,47.0 L 7.85,38.47 L 2.0,32.0 L 7.85,25.53 L 6.02,17.0 L 14.32,14.32 L 17.0,6.02 L 25.53,7.85 Z" fill="#157a63"/>
+      <path d="M22 33 L29 40 L43 24" stroke="#f6f1e3" stroke-width="4.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <p class="receipt-title">Terima Kasih Telah Membeli</p>
+    <hr class="divider" />
+    <div class="receipt-details">
+      <div class="receipt-stamp-wrap" aria-hidden="true">
+        <div class="receipt-stamp">
+          <span class="stamp-brand">STRUK OFFICIAL<br><span id="receiptStampMerchant">-</span></span>
+          <span class="stamp-datetime" id="receiptStampDateTime">-</span>
+        </div>
+      </div>
+      <div class="receipt-row receipt-row--amount">
+        <span class="label">Total Dibayar</span>
+        <span class="value" id="receiptAmount">Rp 0</span>
+      </div>
+      <div class="receipt-row">
+        <span class="label">Merchant</span>
+        <span class="value" id="receiptMerchant">-</span>
+      </div>
+      <div class="receipt-row" id="receiptDeviceRow">
+        <span class="label">Perangkat</span>
+        <span class="value" id="receiptDevice">-</span>
+      </div>
+      <div class="receipt-row" id="receiptHoursRow">
+        <span class="label">Durasi</span>
+        <span class="value" id="receiptHours">-</span>
+      </div>
+      <div class="receipt-row">
+        <span class="label">Waktu</span>
+        <span class="value" id="receiptTime">-</span>
+      </div>
+      <div class="receipt-row">
+        <span class="label">Dikonfirmasi Oleh</span>
+        <span class="value" id="receiptConfirmedBy">-</span>
+      </div>
+      <div class="receipt-row">
+        <span class="label">ID Transaksi</span>
+        <span class="value" id="receiptTxnId">-</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+                        KONFIGURASI
+     ============================================================ -->
+<script id="config">
+  const DISCORD_CLIENT_ID = "1530269842521849999";
+
+  // Domain situs WiFi ini. Tiap URL redirect HARUS didaftarkan juga di
+  // Discord Developer Portal → OAuth2 → Redirects.
+  const ALLOWED_HOSTS = ["mywifi.rstudiolab.tech", "mywifi-router.vercel.app"];
+  const DEFAULT_HOST  = "mywifi.rstudiolab.tech";
+  const ADMIN_PATH    = "/petugas";
+
+  const ACTIVE_HOST = ALLOWED_HOSTS.includes(window.location.hostname)
+    ? window.location.hostname
+    : DEFAULT_HOST;
+  const DISCORD_REDIRECT_URI = `https://${ACTIVE_HOST}${ADMIN_PATH}`;
+
+  const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyA33dOynUErLa1_KXieZ4jJUBNGLECs-C8",
+    authDomain: "kasir-7777.firebaseapp.com",
+    projectId: "kasir-7777",
+    storageBucket: "kasir-7777.firebasestorage.app",
+    messagingSenderId: "395690993645",
+    appId: "1:395690993645:web:704bac4b5c95d2be2ce9e4"
+  };
+</script>
+
+<script>
+(function(){
+  const belumDisetel = DISCORD_CLIENT_ID.startsWith('GANTI_') || DISCORD_REDIRECT_URI.startsWith('GANTI_') || FIREBASE_CONFIG.apiKey.startsWith('GANTI_');
+  if (belumDisetel){
+    document.getElementById('setupBanner').hidden = false;
+    return;
+  }
+  document.getElementById('app').hidden = false;
+
+  firebase.initializeApp(FIREBASE_CONFIG);
+  const db = firebase.firestore();
+
+  const loginView   = document.getElementById('loginView');
+  const loadingView = document.getElementById('loadingView');
+  const deniedView  = document.getElementById('deniedView');
+  const adminView   = document.getElementById('adminView');
+
+  function showOnly(view){
+    [loginView, loadingView, deniedView, adminView].forEach(v => v.classList.add('hidden'));
+    view.classList.remove('hidden');
+  }
+
+  const SESSION_KEY = 'qris_admin_discord_token';
+  let txnUnsub = null;
+
+  // ---------- notifikasi transaksi baru masuk ----------
+  let audioCtx = null;
+  let soundEnabled = false;
+  let knownTxnIds = null;
+  let titleBlinkTimer = null;
+  const originalTitle = document.title;
+
+  function playChime(){
+    if (!audioCtx) return;
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const now = audioCtx.currentTime;
+    [660, 880, 1108.73].forEach((freq, i) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const start = now + i * 0.11;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.3, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.45);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(start);
+      osc.stop(start + 0.5);
+    });
+  }
+
+  function startTitleBlink(){
+    if (titleBlinkTimer || document.visibilityState === 'visible') return;
+    let toggle = false;
+    titleBlinkTimer = setInterval(() => {
+      document.title = toggle ? originalTitle : '🔔 Transaksi baru masuk!';
+      toggle = !toggle;
+    }, 1200);
+  }
+  function stopTitleBlink(){
+    if (!titleBlinkTimer) return;
+    clearInterval(titleBlinkTimer);
+    titleBlinkTimer = null;
+    document.title = originalTitle;
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') stopTitleBlink();
+  });
+
+  function notifyNewIncomingTxn(){
+    if (soundEnabled) playChime();
+    if ('vibrate' in navigator) navigator.vibrate([120, 60, 120]);
+    startTitleBlink();
+    if ('Notification' in window && Notification.permission === 'granted' && document.visibilityState !== 'visible'){
+      try{
+        new Notification('Transaksi baru masuk', { body: 'Ada pembayaran baru menunggu konfirmasi.' });
+      }catch(err){ /* abaikan kalau gagal */ }
+    }
+  }
+
+  document.getElementById('enableSoundBtn').addEventListener('click', () => {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    playChime();
+    soundEnabled = true;
+    const statusEl = document.getElementById('adminSoundStatus');
+    statusEl.textContent = '✓ Notifikasi suara aktif';
+    statusEl.classList.add('on');
+    if ('Notification' in window && Notification.permission === 'default'){
+      Notification.requestPermission();
+    }
+  });
+  function buildAuthorizeUrl(){
+    const params = new URLSearchParams({
+      client_id: DISCORD_CLIENT_ID,
+      redirect_uri: DISCORD_REDIRECT_URI,
+      response_type: 'token',
+      scope: 'identify'
+    });
+    return 'https://discord.com/oauth2/authorize?' + params.toString();
+  }
+
+  document.getElementById('loginBtn').addEventListener('click', () => {
+    window.location.href = buildAuthorizeUrl();
+  });
+
+  function logout(){
+    if (txnUnsub) { txnUnsub(); txnUnsub = null; }
+    localStorage.removeItem(SESSION_KEY);
+    history.replaceState(null, '', window.location.pathname);
+    showOnly(loginView);
+  }
+  document.getElementById('logoutBtnDenied').addEventListener('click', logout);
+  document.getElementById('logoutBtnAdmin').addEventListener('click', logout);
+
+  async function fetchDiscordUser(token){
+    const res = await fetch('https://discord.com/api/users/@me', {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    if (!res.ok) throw new Error('Token Discord tidak valid atau kedaluwarsa');
+    return res.json();
+  }
+
+  function avatarUrl(user){
+    if (user.avatar){
+      return `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64`;
+    }
+    const fallback = (parseInt(user.discriminator, 10) || 0) % 5;
+    return `https://cdn.discordapp.com/embed/avatars/${fallback}.png`;
+  }
+
+  async function handleAuthenticated(token){
+    showOnly(loadingView);
+    let user;
+    try{
+      user = await fetchDiscordUser(token);
+    }catch(err){
+      logout();
+      return;
+    }
+    localStorage.setItem(SESSION_KEY, token);
+
+    let role = 'user';
+    try{
+      const doc = await db.collection('users').doc(user.id).get();
+      if (doc.exists && doc.data().role === 'admin') role = 'admin';
+    }catch(err){
+      console.error('Gagal cek role di Firestore:', err);
+    }
+
+    if (role !== 'admin'){
+      document.getElementById('deniedAvatar').src = avatarUrl(user);
+      document.getElementById('deniedName').textContent = user.username;
+      showOnly(deniedView);
+      return;
+    }
+
+    document.getElementById('adminAvatar').src = avatarUrl(user);
+    document.getElementById('adminName').textContent = user.username;
+    showOnly(adminView);
+    loadConfigIntoForm();
+    subscribeTransactions(user.username);
+  }
+
+  async function loadConfigIntoForm(){
+    try{
+      const doc = await db.collection('config').doc('qris').get();
+      if (doc.exists){
+        const data = doc.data();
+        document.getElementById('merchantNameInput').value = data.merchantName || '';
+        document.getElementById('staticQrisInput').value = data.staticQris || '';
+      }
+    }catch(err){
+      console.error('Gagal load config:', err);
+    }
+  }
+
+  document.getElementById('saveBtn').addEventListener('click', async () => {
+    const statusEl = document.getElementById('saveStatus');
+    statusEl.className = 'status';
+    statusEl.textContent = 'Menyimpan...';
+    try{
+      await db.collection('config').doc('qris').set({
+        merchantName: document.getElementById('merchantNameInput').value.trim(),
+        staticQris: document.getElementById('staticQrisInput').value.trim(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      statusEl.className = 'status ok';
+      statusEl.textContent = 'Tersimpan.';
+    }catch(err){
+      statusEl.className = 'status err';
+      statusEl.textContent = 'Gagal simpan — cek Firestore Rules (write config mungkin di-block).';
+      console.error(err);
+    }
+  });
+
+  // ---------- transaksi ----------
+  function formatRp(n){ return (n || 0).toLocaleString('id-ID'); }
+
+  function formatTime(ts){
+    if (!ts || !ts.toDate) return 'baru saja';
+    return ts.toDate().toLocaleString('id-ID', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+  }
+
+  function escapeHtml(str){
+    return String(str ?? '').replace(/[&<>"']/g, (ch) => ({
+      '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+    }[ch]));
+  }
+
+  function subscribeTransactions(adminUsername){
+    if (txnUnsub) txnUnsub();
+    txnUnsub = db.collection('transactions')
+      .orderBy('createdAt', 'desc')
+      .limit(50)
+      .onSnapshot((snap) => {
+        const currentIds = new Set(snap.docs.map((doc) => doc.id));
+        let newlyArrivedIds = [];
+
+        if (knownTxnIds === null){
+          // snapshot pertama = riwayat yang sudah ada, jangan dianggap "baru"
+        } else {
+          newlyArrivedIds = snap.docs
+            .filter((doc) => !knownTxnIds.has(doc.id))
+            .map((doc) => doc.id);
+        }
+        knownTxnIds = currentIds;
+
+        renderTxnList(snap.docs, adminUsername, newlyArrivedIds);
+
+        if (newlyArrivedIds.length){
+          notifyNewIncomingTxn();
+        }
+      }, (err) => {
+        document.getElementById('txnList').innerHTML = '<p class="muted">Gagal memuat transaksi.</p>';
+        console.error('Gagal subscribe transaksi:', err);
+      });
+  }
+
+  const txnCache = new Map();
+
+  function renderTxnList(docs, adminUsername, newlyArrivedIds = []){
+    const list = document.getElementById('txnList');
+    if (!docs.length){
+      list.innerHTML = '<p class="muted">Belum ada transaksi.</p>';
+      return;
+    }
+
+    txnCache.clear();
+    docs.forEach((doc) => txnCache.set(doc.id, doc.data()));
+
+    list.innerHTML = docs.map((doc) => {
+      const t = doc.data();
+      const badgeClass = t.status === 'confirmed' ? 'badge--confirmed' : (t.status === 'claimed' ? 'badge--claimed' : 'badge--pending');
+      const badgeText  = t.status === 'confirmed' ? 'Terkonfirmasi' : (t.status === 'claimed' ? 'Telah Dibayar Oleh User' : 'Menunggu');
+      const txnIdText = t.transactionId ? escapeHtml(t.transactionId) : '—';
+      const rowClass = newlyArrivedIds.includes(doc.id) ? 'txn-item new-txn' : 'txn-item';
+      const wifiLine = t.service === 'wifi'
+        ? `<div class="txn-wifi">📶 WiFi — Perangkat: ${escapeHtml(t.deviceName || '-')} · ${escapeHtml(String(t.hours ?? '-'))} jam</div>`
+        : '';
+
+      let actionHtml;
+      if (t.status === 'confirmed'){
+        actionHtml = `
+          <div class="txn-actions">
+            <span class="muted" style="font-size:11px;">oleh ${escapeHtml(t.confirmedBy || '-')}</span>
+            <button type="button" class="print-btn" data-print-id="${doc.id}" title="Cetak struk">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              Cetak
+            </button>
+          </div>`;
+      }else{
+        actionHtml = `<button class="confirm-btn" data-id="${doc.id}">Konfirmasi</button>`;
+      }
+
+      return `
+        <div class="${rowClass}">
+          <div>
+            <div class="txn-amount">Rp ${formatRp(t.amount)}</div>
+            <div class="txn-meta">${escapeHtml(t.merchantName || '')} · ${formatTime(t.createdAt)}</div>
+            <div class="txn-id">ID: ${txnIdText}</div>
+            ${wifiLine}
+          </div>
+          <div class="txn-side">
+            <span class="badge ${badgeClass}">${badgeText}</span>
+            ${actionHtml}
+          </div>
+        </div>`;
+    }).join('');
+
+    list.querySelectorAll('.confirm-btn').forEach((btn) => {
+      btn.addEventListener('click', () => confirmTxn(btn.dataset.id, adminUsername, btn));
+    });
+    list.querySelectorAll('.print-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const txnData = txnCache.get(btn.dataset.printId);
+        if (txnData) printReceipt(txnData);
+      });
+    });
+  }
+
+  async function confirmTxn(id, adminUsername, btn){
+    btn.disabled = true;
+    btn.textContent = '...';
+    try{
+      await db.collection('transactions').doc(id).update({
+        status: 'confirmed',
+        confirmedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        confirmedBy: adminUsername
+      });
+    }catch(err){
+      console.error('Gagal konfirmasi transaksi:', err);
+      btn.disabled = false;
+      btn.textContent = 'Konfirmasi';
+    }
+  }
+
+  // ---------- cetak struk transaksi ----------
+  const receiptAmount        = document.getElementById('receiptAmount');
+  const receiptMerchant      = document.getElementById('receiptMerchant');
+  const receiptTime          = document.getElementById('receiptTime');
+  const receiptConfirmedBy   = document.getElementById('receiptConfirmedBy');
+  const receiptTxnId         = document.getElementById('receiptTxnId');
+  const receiptStampMerchant = document.getElementById('receiptStampMerchant');
+  const receiptStampDateTime = document.getElementById('receiptStampDateTime');
+  const receiptDeviceRow     = document.getElementById('receiptDeviceRow');
+  const receiptHoursRow      = document.getElementById('receiptHoursRow');
+  const receiptDevice        = document.getElementById('receiptDevice');
+  const receiptHours         = document.getElementById('receiptHours');
+
+  function printReceipt(t){
+    receiptAmount.textContent = 'Rp ' + formatRp(t.amount);
+    receiptMerchant.textContent = t.merchantName || '-';
+    receiptConfirmedBy.textContent = t.confirmedBy || '-';
+    receiptTxnId.textContent = t.transactionId || '-';
+    if (receiptStampMerchant) receiptStampMerchant.textContent = t.merchantName || '-';
+
+    const isWifi = t.service === 'wifi';
+    receiptDeviceRow.style.display = isWifi ? '' : 'none';
+    receiptHoursRow.style.display = isWifi ? '' : 'none';
+    if (isWifi){
+      receiptDevice.textContent = t.deviceName || '-';
+      receiptHours.textContent = (t.hours ?? '-') + ' jam';
+    }
+
+    let confirmedDate = new Date();
+    if (t.confirmedAt && typeof t.confirmedAt.toDate === 'function'){
+      confirmedDate = t.confirmedAt.toDate();
+    }
+    receiptTime.textContent = confirmedDate.toLocaleString('id-ID', { dateStyle:'medium', timeStyle:'short' });
+    if (receiptStampDateTime){
+      receiptStampDateTime.textContent = confirmedDate.toLocaleString('id-ID', { dateStyle:'medium', timeStyle:'medium' });
+    }
+
+    document.body.classList.add('is-printing-receipt');
+    window.print();
+  }
+
+  window.addEventListener('afterprint', () => {
+    document.body.classList.remove('is-printing-receipt');
+  });
+
+  // ---------- entry point ----------
+  (function init(){
+    if (window.location.hash.includes('access_token')){
+      const hashParams = new URLSearchParams(window.location.hash.slice(1));
+      const token = hashParams.get('access_token');
+      history.replaceState(null, '', window.location.pathname);
+      if (token){
+        handleAuthenticated(token);
+        return;
+      }
+    }
+    const saved = localStorage.getItem(SESSION_KEY);
+    if (saved){
+      handleAuthenticated(saved);
+      return;
+    }
+    showOnly(loginView);
+  })();
+})();
+</script>
+
+<!-- ============================================================
+                        GUARD ANTI-TAMPER
+     ============================================================ -->
+<style>
+  #tamperGuardOverlay{
+    display:none;
+    position:fixed; inset:0; z-index:9999;
+    align-items:center; justify-content:center;
+    padding:32px;
+    background: rgba(14,23,16,0.94);
+    font-family:'Manrope', system-ui, sans-serif;
+    text-align:center;
+  }
+  #tamperGuardOverlay.is-visible{ display:flex; }
+  #tamperGuardOverlay .box{ max-width:300px; }
+  #tamperGuardOverlay .title{ color:#f6f1e3; font-size:16px; font-weight:800; margin:0 0 10px; }
+  #tamperGuardOverlay .desc{ color:#c9c0ab; font-size:13px; line-height:1.6; margin:0 0 20px; }
+  #tamperGuardOverlay button{
+    font-family:'Manrope', system-ui, sans-serif; font-weight:800; font-size:14px;
+    color:#241f17; background:#f6f1e3; border:none; border-radius:6px;
+    padding:12px 20px; cursor:pointer;
+  }
+  @media print{
+    body.is-printing-receipt #tamperGuardOverlay{ display:none !important; }
+  }
+</style>
+
+<div id="tamperGuardOverlay">
+  <div class="box">
+    <p class="title">⚠ Halaman Terdeteksi Bermasalah</p>
+    <p class="desc" id="tamperGuardReason">Untuk keamanan transaksi, tutup DevTools (F12) lalu muat ulang halaman.</p>
+    <button type="button" onclick="location.reload()">Muat Ulang Halaman</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const overlay = document.getElementById('tamperGuardOverlay');
+  const reasonEl = document.getElementById('tamperGuardReason');
+  let triggered = false;
+
+  function trigger(reason){
+    if (triggered) return;
+    triggered = true;
+    if (reasonEl){
+      reasonEl.textContent = reason + ' Tutup DevTools (F12) lalu muat ulang halaman sebelum melanjutkan.';
+    }
+    overlay.classList.add('is-visible');
+    console.warn('[tamper-guard]', reason);
+  }
+
+  const SIZE_THRESHOLD = 160;
+  function checkWindowSize(){
+    const widthDiff = window.outerWidth - window.innerWidth;
+    const heightDiff = window.outerHeight - window.innerHeight;
+    if (widthDiff > SIZE_THRESHOLD || heightDiff > SIZE_THRESHOLD){
+      trigger('Terdeteksi DevTools kemungkinan terbuka.');
+    }
+  }
+  setInterval(checkWindowSize, 1000);
+  window.addEventListener('resize', checkWindowSize);
+
+  window.addEventListener('keydown', (e) => {
+    const key = e.key ? e.key.toLowerCase() : '';
+    const isDevToolsShortcut =
+      key === 'f12' ||
+      (e.ctrlKey && e.shiftKey && ['i','j','c'].includes(key)) ||
+      (e.metaKey && e.altKey && ['i','j'].includes(key));
+    if (isDevToolsShortcut){
+      e.preventDefault();
+      trigger('Shortcut pembuka DevTools ditekan.');
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
