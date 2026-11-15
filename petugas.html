@@ -635,7 +635,7 @@
       if (t.status === 'confirmed'){
         actionHtml = `
           <div class="txn-actions">
-            <span class="muted" style="font-size:11px;">oleh ${escapeHtml(t.confirmedBy || '-')}</span>
+            <span class="muted" style="font-size:11px;">oleh ${t.confirmedBy ? 'admin' : '-'}</span>
             <button type="button" class="print-btn" data-print-id="${doc.id}" title="Cetak struk">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
               Cetak
@@ -678,7 +678,7 @@
       await db.collection('transactions').doc(id).update({
         status: 'confirmed',
         confirmedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        confirmedBy: adminUsername
+        confirmedBy: 'admin'
       });
     }catch(err){
       console.error('Gagal konfirmasi transaksi:', err);
@@ -703,7 +703,7 @@
   function printReceipt(t){
     receiptAmount.textContent = 'Rp ' + formatRp(t.amount);
     receiptMerchant.textContent = t.merchantName || '-';
-    receiptConfirmedBy.textContent = t.confirmedBy || '-';
+    receiptConfirmedBy.textContent = t.confirmedBy ? 'admin' : '-';
     receiptTxnId.textContent = t.transactionId || '-';
     if (receiptStampMerchant) receiptStampMerchant.textContent = t.merchantName || '-';
 
