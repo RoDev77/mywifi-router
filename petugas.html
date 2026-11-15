@@ -625,10 +625,9 @@
       const txnIdText = t.transactionId ? escapeHtml(t.transactionId) : '—';
       const rowClass = newlyArrivedIds.includes(doc.id) ? 'txn-item new-txn' : 'txn-item';
       const waDigits = String(t.whatsapp || '').replace(/\D/g, '').replace(/^0/, '62').replace(/^8/, '628');
-      const waText = encodeURIComponent('Halo, pembayaran Sewa WiFi R STUDIO LABS kamu sudah terkonfirmasi.\nID Transaksi: ' + (t.transactionId || '-') + ' (' + (t.hours ?? '-') + ' jam, Rp ' + formatRp(t.amount) + ')\nSSID: R STUDIO LABS\nPassword: \nTerima kasih!');
       const wifiLine = t.service === 'wifi'
         ? `<div class="txn-wifi">📶 WiFi — WA: ${escapeHtml(t.whatsapp || t.deviceName || '-')} · ${escapeHtml(String(t.hours ?? '-'))} jam</div>` +
-          (waDigits ? `<div style="margin-top:4px"><a href="https://wa.me/${waDigits}?text=${waText}" target="_blank" rel="noopener" style="font-size:11.5px;font-weight:700;color:var(--teal)">Kirim SSID &amp; Password via WA ↗</a></div>` : '')
+          (waDigits ? `<div style="margin-top:4px"><button type="button" class="wa-btn" data-wa-id="${doc.id}" style="font-size:11.5px;font-weight:700;color:var(--teal);background:none;border:none;padding:0;cursor:pointer;font-family:inherit">Kirim SSID &amp; Password + Struk via WA ↗</button></div>` : '')
         : '';
 
       let actionHtml;
@@ -669,6 +668,12 @@
         if (txnData) printReceipt(txnData);
       });
     });
+    list.querySelectorAll('.wa-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const txnData = txnCache.get(btn.dataset.waId);
+        if (txnData) kirimWaDenganStruk(txnData, btn);
+      });
+    });
   }
 
   async function confirmTxn(id, adminUsername, btn){
@@ -699,6 +704,117 @@
   const receiptHoursRow      = document.getElementById('receiptHoursRow');
   const receiptDevice        = document.getElementById('receiptDevice');
   const receiptHours         = document.getElementById('receiptHours');
+
+  function teksWa(t){
+    return 'Halo, pembayaran Sewa WiFi R STUDIO LABS kamu sudah terkonfirmasi.\nID Transaksi: ' + (t.transactionId || '-') + ' (' + (t.hours ?? '-') + ' jam, Rp ' + formatRp(t.amount) + ')\nSSID: R STUDIO LABS\nPassword: \nTerima kasih!';
+  }
+
+  function gambarStrukBlob(t){
+    return new Promise((resolve, reject) => {
+      const W = 640;
+      const jam = Number(t.hours) || 0;
+      const subtotal = jam > 0 ? jam * 5000 : (t.amount || 0);
+      const fee = Math.max(0, (t.amount || 0) - subtotal);
+      const wa = String(t.whatsapp || '');
+      const showWa = wa.replace(/\D/g, '').length >= 7;
+      let tgl = new Date();
+      if (t.createdAt && typeof t.createdAt.toDate === 'function') tgl = t.createdAt.toDate();
+      const tglText = tgl.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+      let H = 36 + 90 + 92 + 26 + 68 + 26 + 36 + 44 + 26 + 76 + 30 + 36;
+      if (showWa) H += 34;
+      if (fee > 0) H += 34;
+      const canvas = document.createElement('canvas');
+      const S = 2;
+      canvas.width = W * S; canvas.height = H * S;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(S, S);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = '#b7dfe5'; ctx.lineWidth = 2; ctx.strokeRect(1, 1, W - 2, H - 2);
+      const ink = '#05343f', muted = '#3f6b75', teal = '#0fa3b8', green = '#128c4a';
+      let y = 36;
+      const logoImg = document.querySelector('img[src^="data:image"]');
+      if (logoImg && logoImg.complete && logoImg.naturalWidth){
+        const lh = 76, lw = lh * (logoImg.naturalWidth / logoImg.naturalHeight);
+        try { ctx.drawImage(logoImg, (W - lw) / 2, y, lw, lh); } catch (e) {}
+      }
+      y += 90;
+      ctx.textAlign = 'center'; ctx.fillStyle = ink;
+      ctx.font = '800 30px system-ui, sans-serif';
+      ctx.fillText('R STUDIO LABS', W / 2, y + 28); y += 38;
+      ctx.font = '600 19px system-ui, sans-serif'; ctx.fillStyle = teal;
+      ctx.fillText('Struk Sewa WiFi', W / 2, y + 20); y += 26;
+      ctx.font = '400 16px system-ui, sans-serif'; ctx.fillStyle = muted;
+      ctx.fillText(t.merchantName || 'R GAMING STORE', W / 2, y + 18); y += 28;
+      const dash = () => { ctx.setLineDash([6, 6]); ctx.strokeStyle = '#b7dfe5'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(36, y); ctx.lineTo(W - 36, y); ctx.stroke(); ctx.setLineDash([]); y += 26; };
+      const row = (label, value, bold) => {
+        ctx.textAlign = 'left'; ctx.fillStyle = muted; ctx.font = '400 19px system-ui, sans-serif';
+        ctx.fillText(label, 44, y + 20);
+        ctx.textAlign = 'right'; ctx.fillStyle = ink; ctx.font = (bold ? '700 ' : '500 ') + '19px system-ui, sans-serif';
+        ctx.fillText(value, W - 44, y + 20);
+        y += 34;
+      };
+      dash();
+      row('ID Transaksi', t.transactionId || '-');
+      row('Tanggal', tglText);
+      if (showWa) row('WhatsApp', wa);
+      dash();
+      row('WiFi - ' + (jam || '-') + ' jam', 'Rp ' + formatRp(subtotal));
+      if (fee > 0) row('Biaya Layanan', 'Rp ' + formatRp(fee));
+      ctx.textAlign = 'left'; ctx.fillStyle = ink; ctx.font = '800 24px system-ui, sans-serif';
+      ctx.fillText('TOTAL', 44, y + 26);
+      ctx.textAlign = 'right';
+      ctx.fillText('Rp ' + formatRp(t.amount), W - 44, y + 26);
+      const totalMidY = y + 18; y += 44;
+      dash();
+      ctx.textAlign = 'center';
+      ctx.fillStyle = green; ctx.font = '800 22px system-ui, sans-serif';
+      ctx.fillText('TERKONFIRMASI', W / 2, y + 24); y += 32;
+      ctx.fillStyle = muted; ctx.font = '400 16px system-ui, sans-serif';
+      ctx.fillText('Dikonfirmasi Oleh: ' + (t.confirmedBy ? 'admin' : '-'), W / 2, y + 18); y += 44;
+      ctx.font = '400 15px system-ui, sans-serif';
+      ctx.fillText('Terima kasih sudah sewa WiFi di R STUDIO LABS', W / 2, y + 16); y += 30;
+      ctx.save();
+      ctx.translate(W - 128, totalMidY + 46);
+      ctx.rotate(-0.21);
+      ctx.strokeStyle = green; ctx.lineWidth = 3;
+      ctx.strokeRect(-72, -24, 144, 48);
+      ctx.fillStyle = green; ctx.font = '800 27px system-ui, sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('LUNAS', 0, 10);
+      ctx.restore();
+      if (canvas.toBlob) canvas.toBlob((b) => b ? resolve(b) : reject(new Error('blob gagal')), 'image/png');
+      else reject(new Error('toBlob tidak didukung'));
+    });
+  }
+
+  async function kirimWaDenganStruk(t, btn){
+    const digits = String(t.whatsapp || '').replace(/\D/g, '').replace(/^0/, '62').replace(/^8/, '628');
+    const text = teksWa(t);
+    const oldLabel = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Menyiapkan struk...';
+    try {
+      const blob = await gambarStrukBlob(t);
+      const file = new File([blob], 'struk-' + (t.transactionId || 'wifi') + '.png', { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], text: text });
+          btn.textContent = oldLabel; btn.disabled = false; return;
+        } catch (e) {
+          if (e && e.name === 'AbortError') { btn.textContent = oldLabel; btn.disabled = false; return; }
+        }
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = file.name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      if (digits) window.open('https://wa.me/' + digits + '?text=' + encodeURIComponent(text), '_blank');
+      btn.textContent = 'Struk terunduh - lampirkan di WA ya';
+      setTimeout(() => { btn.textContent = oldLabel; btn.disabled = false; }, 4000);
+    } catch (e) {
+      btn.textContent = oldLabel; btn.disabled = false;
+      if (digits) window.open('https://wa.me/' + digits + '?text=' + encodeURIComponent(text), '_blank');
+    }
+  }
 
   function printReceipt(t){
     receiptAmount.textContent = 'Rp ' + formatRp(t.amount);
