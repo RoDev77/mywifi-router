@@ -317,7 +317,7 @@
         <span class="value" id="receiptMerchant">-</span>
       </div>
       <div class="receipt-row" id="receiptDeviceRow">
-        <span class="label">Perangkat</span>
+        <span class="label">WhatsApp</span>
         <span class="value" id="receiptDevice">-</span>
       </div>
       <div class="receipt-row" id="receiptHoursRow">
@@ -624,8 +624,11 @@
       const badgeText  = t.status === 'confirmed' ? 'Terkonfirmasi' : (t.status === 'claimed' ? 'Telah Dibayar Oleh User' : 'Menunggu');
       const txnIdText = t.transactionId ? escapeHtml(t.transactionId) : '—';
       const rowClass = newlyArrivedIds.includes(doc.id) ? 'txn-item new-txn' : 'txn-item';
+      const waDigits = String(t.whatsapp || '').replace(/\D/g, '').replace(/^0/, '62').replace(/^8/, '628');
+      const waText = encodeURIComponent('Halo, pembayaran Sewa WiFi R STUDIO LABS kamu sudah terkonfirmasi.\nID Transaksi: ' + (t.transactionId || '-') + ' (' + (t.hours ?? '-') + ' jam, Rp ' + formatRp(t.amount) + ')\nSSID: R STUDIO LABS\nPassword: \nTerima kasih!');
       const wifiLine = t.service === 'wifi'
-        ? `<div class="txn-wifi">📶 WiFi — Perangkat: ${escapeHtml(t.deviceName || '-')} · ${escapeHtml(String(t.hours ?? '-'))} jam</div>`
+        ? `<div class="txn-wifi">📶 WiFi — WA: ${escapeHtml(t.whatsapp || t.deviceName || '-')} · ${escapeHtml(String(t.hours ?? '-'))} jam</div>` +
+          (waDigits ? `<div style="margin-top:4px"><a href="https://wa.me/${waDigits}?text=${waText}" target="_blank" rel="noopener" style="font-size:11.5px;font-weight:700;color:var(--teal)">Kirim SSID &amp; Password via WA ↗</a></div>` : '')
         : '';
 
       let actionHtml;
@@ -708,7 +711,7 @@
     receiptDeviceRow.style.display = isWifi ? '' : 'none';
     receiptHoursRow.style.display = isWifi ? '' : 'none';
     if (isWifi){
-      receiptDevice.textContent = t.deviceName || '-';
+      receiptDevice.textContent = t.whatsapp || t.deviceName || '-';
       receiptHours.textContent = (t.hours ?? '-') + ' jam';
     }
 

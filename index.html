@@ -94,6 +94,7 @@ h1{
 #dev:focus{outline:none;border-color:var(--signal);box-shadow:0 0 0 4px rgba(255,183,3,.35)}
 #dev.err{border-color:#d64545;background:#fdf1f1}
 .devhint{color:var(--muted);font-size:13.5px;margin:7px 0 14px;line-height:1.5}
+.devhint.warn{color:#d64545;font-weight:700}
 .receipt{
   font-family:ui-monospace,"SF Mono",Consolas,monospace;font-size:15px;
   background:#fff;border:1.5px dashed var(--line);border-radius:16px;
@@ -187,7 +188,7 @@ footer a:hover{color:var(--signal)}
     <div class="wifi">
       <div>
         <div class="name">WiFi: R STUDIO LABS</div>
-        <div style="color:var(--muted);font-size:14.5px;margin-top:2px">Hubungkan perangkatmu ke nama WiFi ini setelah membayar.</div>
+        <div style="color:var(--muted);font-size:14.5px;margin-top:2px">SSID dan password dikirim ke WhatsApp-mu setelah pembayaran terkonfirmasi.</div>
       </div>
       <div class="price">Rp5.000<small>per jam</small></div>
     </div>
@@ -196,9 +197,9 @@ footer a:hover{color:var(--signal)}
   <section class="card">
     <h2>Cara sewa</h2>
     <div class="steps">
-      <div><b>1.</b> Pilih durasi dan isi nama perangkatmu.</div>
+      <div><b>1.</b> Pilih durasi dan isi nomor WhatsApp-mu.</div>
       <div><b>2.</b> Buat kode QR, lalu scan &amp; bayar dengan QRIS.</div>
-      <div><b>3.</b> Tekan "Saya Sudah Bayar" — setelah dikonfirmasi, akses WiFi <b>R STUDIO LABS</b> diaktifkan untuk perangkatmu.</div>
+      <div><b>3.</b> Tekan "Saya Sudah Bayar" — setelah dikonfirmasi, SSID dan password WiFi dikirim ke WhatsApp-mu.</div>
     </div>
   </section>
 
@@ -224,9 +225,9 @@ footer a:hover{color:var(--signal)}
 
   <section class="card" id="kasirCard">
     <h2>Kasir</h2>
-    <label class="devlbl" for="dev">Nama perangkat</label>
-    <input id="dev" type="text" placeholder="cth: iPhone 12 / Redmi Note 10" autocomplete="off">
-    <p class="devhint">Tulis persis seperti nama perangkatmu yang muncul di daftar perangkat WiFi — nama ini yang dipakai untuk mengaktifkan aksesmu.</p>
+    <label class="devlbl" for="dev">Nomor WhatsApp</label>
+    <input id="dev" type="tel" inputmode="tel" placeholder="cth: 0812 3456 7890" autocomplete="tel">
+    <p class="devhint" id="devHint">Nomor ini dipakai untuk mengirim SSID dan password WiFi setelah pembayaranmu terkonfirmasi, termasuk informasi penting lainnya.</p>
 
     <div class="receipt">
       <div class="row"><span>WiFi R STUDIO LABS</span><span id="rItem">1 jam</span></div>
@@ -256,12 +257,12 @@ footer a:hover{color:var(--signal)}
       <h2>Pembayaran Berhasil</h2>
       <div class="rows">
         <div class="row"><span>Total Dibayar</span><span id="sAmount">-</span></div>
-        <div class="row"><span>Perangkat</span><span id="sDevice">-</span></div>
+        <div class="row"><span>WhatsApp</span><span id="sDevice">-</span></div>
         <div class="row"><span>Durasi</span><span id="sHours">-</span></div>
         <div class="row"><span>Waktu</span><span id="sTime">-</span></div>
         <div class="row"><span>ID Transaksi</span><span id="sTxn">-</span></div>
       </div>
-      <p>Akses WiFi <b>R STUDIO LABS</b> untuk perangkatmu sedang diaktifkan. Silakan hubungkan perangkatmu ke WiFi <b>R STUDIO LABS</b>.</p>
+      <p>SSID dan password WiFi <b>R STUDIO LABS</b> akan dikirim ke nomor WhatsApp di atas. Silakan cek WhatsApp-mu sebentar lagi.</p>
       <button class="secondary" id="successNewBtn">Transaksi Baru</button>
     </div>
   </section>
@@ -372,7 +373,7 @@ footer a:hover{color:var(--signal)}
   var downloadLink = document.getElementById("downloadLink");
   var successView = document.getElementById("successView");
 
-  var currentTxnId = null, currentTxnCode = null, unsubscribeTxn = null;
+  var currentTxnId = null, currentTxnCode = null, unsubscribeTxn = null, currentWa = "";
 
   function rp(n) { return "Rp" + n.toLocaleString("id-ID"); }
   function total() { return hours * HARGA; }
@@ -409,7 +410,12 @@ footer a:hover{color:var(--signal)}
   });
   document.getElementById("plus").addEventListener("click", function () { if (hours < MAX) setHours(hours + 1); });
   document.getElementById("minus").addEventListener("click", function () { if (hours > 1) setHours(hours - 1); });
-  dev.addEventListener("input", function () { dev.classList.remove("err"); });
+  dev.addEventListener("input", function () {
+    dev.classList.remove("err");
+    var hint = document.getElementById("devHint");
+    hint.classList.remove("warn");
+    hint.textContent = "Nomor ini dipakai untuk mengirim SSID dan password WiFi setelah pembayaranmu terkonfirmasi, termasuk informasi penting lainnya.";
+  });
 
   function setStatus(state, msg) {
     statusEl.className = "status " + state;
@@ -433,7 +439,7 @@ footer a:hover{color:var(--signal)}
   function showSuccess(d) {
     if (unsubscribeTxn) { unsubscribeTxn(); unsubscribeTxn = null; }
     document.getElementById("sAmount").textContent = rp(total());
-    document.getElementById("sDevice").textContent = dev.value.trim();
+    document.getElementById("sDevice").textContent = currentWa;
     document.getElementById("sHours").textContent = hours + " jam";
     var t = new Date();
     if (d && d.confirmedAt && typeof d.confirmedAt.toDate === "function") t = d.confirmedAt.toDate();
@@ -462,13 +468,19 @@ footer a:hover{color:var(--signal)}
   });
 
   payBtn.addEventListener("click", function () {
-    var nama = dev.value.trim();
-    if (!nama) {
+    var digits = dev.value.replace(/\D/g, "");
+    if (digits.charAt(0) === "0") digits = "62" + digits.slice(1);
+    else if (digits.charAt(0) === "8") digits = "62" + digits;
+    if (!/^62\d{8,13}$/.test(digits)) {
       dev.classList.add("err");
+      var hint = document.getElementById("devHint");
+      hint.textContent = "Nomor WhatsApp tidak valid — contoh yang benar: 0812 3456 7890.";
+      hint.classList.add("warn");
       dev.focus();
       dev.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
+    currentWa = digits;
     payBtn.disabled = true;
     payBtn.textContent = "Membuat…";
 
@@ -504,7 +516,7 @@ footer a:hover{color:var(--signal)}
         status: "pending",
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         service: "wifi",
-        deviceName: nama,
+        whatsapp: currentWa,
         hours: hours
       }).then(function (ref) {
         currentTxnId = ref.id;
