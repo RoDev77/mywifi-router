@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Membuka halaman router</title>
+<noscript><meta http-equiv="refresh" content="0;url=http://192.168.0.1"></noscript>
+<style>
+:root{
+  --bg:#e2f6f8; --card:#f6fcfd; --ink:#05343f; --muted:#3f6b75;
+  --signal:#0fa3b8; --amber:#ffb703; --line:#b7dfe5;
+  color-scheme:light;
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{
+  display:grid;place-items:center;padding:24px;color:var(--ink);
+  background:radial-gradient(900px 520px at 50% -12%,#bdeaf0 0,transparent 70%),var(--bg);
+  font-family:ui-rounded,"SF Pro Rounded","Segoe UI",system-ui,sans-serif;
+}
+.card{
+  width:min(440px,100%);background:var(--card);border:1px solid var(--line);
+  border-radius:28px;padding:26px 28px 24px;
+  box-shadow:0 34px 60px -34px rgba(5,52,63,.4);
+}
+svg{display:block;width:100%;height:auto;margin-bottom:8px}
+.ring{fill:none;stroke:var(--signal);stroke-width:2;transform-box:fill-box;transform-origin:center;animation:ping 2.6s ease-out infinite;opacity:0}
+.ring:nth-of-type(2){animation-delay:.85s}
+.ring:nth-of-type(3){animation-delay:1.7s}
+.packet{fill:var(--amber);animation:travel 1.6s cubic-bezier(.6,0,.4,1) infinite}
+@keyframes ping{0%{transform:scale(.55);opacity:.9}100%{transform:scale(1.7);opacity:0}}
+@keyframes travel{0%{transform:translateX(0)}100%{transform:translateX(136px)}}
+h1{font-size:28px;font-weight:800;letter-spacing:-.02em;line-height:1.15;margin-top:6px}
+.sub{margin-top:10px;color:var(--muted);font-size:16px;line-height:1.5;max-width:34ch}
+code{font-family:ui-monospace,"SF Mono",Consolas,monospace;font-size:.95em;color:var(--ink);background:#dff1f4;padding:1px 6px;border-radius:6px}
+.bar{height:6px;border-radius:99px;background:#d3ecf0;margin:20px 0;overflow:hidden}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--signal),var(--amber));transform-origin:left;animation:fill 3s linear forwards}
+.stopped .bar i{animation-play-state:paused}
+@keyframes fill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.actions{display:flex;gap:10px;flex-wrap:wrap}
+.go,#stop{font:inherit;font-weight:700;font-size:15px;border-radius:14px;padding:12px 18px;cursor:pointer;text-decoration:none}
+.go{background:var(--ink);color:#fff;border:2px solid var(--ink)}
+#stop{background:transparent;color:var(--ink);border:2px solid var(--line)}
+.stopped #stop{display:none}
+.go:focus-visible,#stop:focus-visible,.note a:focus-visible{outline:3px solid var(--amber);outline-offset:3px}
+.note{margin-top:18px;font-size:13.5px;line-height:1.5;color:var(--muted);max-width:44ch}
+.note a{color:var(--ink);font-weight:700}
+@media (prefers-reduced-motion:reduce){
+  .ring{animation:none;opacity:.35;transform:scale(1.1)}
+  .packet{animation:none;transform:translateX(68px)}
+}
+</style>
+</head>
+<body>
+<main class="card" id="card">
+  <svg viewBox="0 0 320 110" role="img" aria-label="Perangkat kamu terhubung ke router">
+    <rect x="18" y="32" width="54" height="40" rx="8" fill="none" stroke="#05343f" stroke-width="3"/>
+    <line x1="9" y1="82" x2="81" y2="82" stroke="#05343f" stroke-width="3" stroke-linecap="round"/>
+    <line x1="94" y1="54" x2="230" y2="54" stroke="#0fa3b8" stroke-opacity=".5" stroke-width="2" stroke-dasharray="4 7" stroke-linecap="round"/>
+    <circle class="packet" cx="94" cy="54" r="5.5"/>
+    <circle class="ring" cx="262" cy="54" r="26"/>
+    <circle class="ring" cx="262" cy="54" r="26"/>
+    <circle class="ring" cx="262" cy="54" r="26"/>
+    <line x1="248" y1="44" x2="244" y2="28" stroke="#05343f" stroke-width="3" stroke-linecap="round"/>
+    <line x1="276" y1="44" x2="280" y2="28" stroke="#05343f" stroke-width="3" stroke-linecap="round"/>
+    <rect x="238" y="42" width="48" height="26" rx="8" fill="#05343f"/>
+    <circle cx="250" cy="55" r="2.6" fill="#ffb703"/>
+    <circle cx="259" cy="55" r="2.6" fill="#4dd0e1"/>
+  </svg>
+
+  <h1>Membuka halaman router</h1>
+  <p class="sub" id="sub" aria-live="polite">Kamu dialihkan ke <code>192.168.0.1</code> dalam <b id="n">3</b> detik.</p>
+
+  <div class="bar" aria-hidden="true"><i></i></div>
+
+  <div class="actions">
+    <a class="go" id="go" href="http://192.168.0.1">Buka sekarang</a>
+    <button id="stop" type="button">Batalkan</button>
+  </div>
+
+  <p class="note">Halaman ini hanya berfungsi saat kamu tersambung ke WiFi rumah. Kalau router tidak terbuka, coba <a href="http://tplinkwifi.net">tplinkwifi.net</a>.</p>
+</main>
+
+<script>
+(function () {
+  var ROUTER_URL = "http://192.168.0.1";
+  var left = 3, timer;
+  var n = document.getElementById("n");
+  var sub = document.getElementById("sub");
+  var card = document.getElementById("card");
+
+  function tick() {
+    left--;
+    if (left <= 0) { location.replace(ROUTER_URL); return; }
+    n.textContent = left;
+    timer = setTimeout(tick, 1000);
+  }
+  timer = setTimeout(tick, 1000);
+
+  document.getElementById("stop").addEventListener("click", function () {
+    clearTimeout(timer);
+    card.classList.add("stopped");
+    sub.textContent = "Pengalihan dibatalkan. Tekan Buka sekarang kalau sudah siap.";
+    document.getElementById("go").focus();
+  });
+})();
+</script>
+</body>
+</html>
