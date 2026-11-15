@@ -4,11 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>R STUDIO LABS — Sewa WiFi</title>
-<meta name="description" content="Sewa WiFi R STUDIO LABS, Rp5.000 per jam. Pilih durasi, bayar, langsung terhubung.">
+<meta name="description" content="Sewa WiFi R STUDIO LABS, Rp5.000 per jam. Pilih durasi, bayar QRIS, langsung terhubung.">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
 <style>
 :root{
   --bg:#e2f6f8; --card:#f6fcfd; --ink:#05343f; --muted:#3f6b75;
   --signal:#0fa3b8; --amber:#ffb703; --line:#b7dfe5;
+  --teal:#157a63; --teal-soft:#d9ece5; --amber-soft:#f3e6c8; --amber-ink:#a3760a;
+  --red:#b93521; --red-soft:#f3ddd6;
   color-scheme:light;
 }
 *{box-sizing:border-box;margin:0}
@@ -31,9 +36,7 @@ h1{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1.1;margin-t
   padding:20px;margin-bottom:14px;box-shadow:0 24px 44px -30px rgba(5,52,63,.35);
 }
 .card h2{font-size:17px;font-weight:800;margin-bottom:12px}
-.wifi{
-  display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
-}
+.wifi{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .wifi .name{font-size:20px;font-weight:800}
 .wifi .price{font-size:20px;font-weight:800;color:var(--signal)}
 .wifi .price small{display:block;font-size:12.5px;color:var(--muted);font-weight:600;text-align:right}
@@ -46,7 +49,7 @@ h1{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1.1;margin-t
 }
 .dur small{display:block;font-size:12.5px;font-weight:700;color:var(--muted);margin-top:2px}
 .dur.on{border-color:var(--signal);background:#e2f6f8;box-shadow:inset 0 0 0 1px var(--signal)}
-.dur:focus-visible,.pay:focus-visible,.stepbtn:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+.dur:focus-visible,.pay:focus-visible,.stepbtn:focus-visible,.secondary:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
 .custom{display:flex;align-items:center;justify-content:space-between;margin-top:14px;gap:10px}
 .custom .lbl{font-weight:700;font-size:15px}
 .stepper{display:flex;align-items:center;gap:12px}
@@ -55,36 +58,6 @@ h1{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1.1;margin-t
   background:var(--ink);color:#fff;border:2px solid var(--ink);line-height:1;
 }
 .stepper .val{font-size:19px;font-weight:800;min-width:74px;text-align:center}
-.receipt{
-  font-family:ui-monospace,"SF Mono",Consolas,monospace;font-size:15px;
-  border-top:2px dashed var(--line);border-bottom:2px dashed var(--line);
-  padding:12px 2px;display:grid;gap:7px;
-}
-.receipt .row{display:flex;justify-content:space-between;gap:10px}
-.receipt .total{font-size:19px;font-weight:800}
-.methods{display:grid;gap:9px}
-.method{
-  display:flex;align-items:center;gap:10px;padding:12px 14px;border:2px solid var(--line);
-  border-radius:14px;background:#fff;cursor:pointer;font-weight:700;font-size:15.5px;
-}
-.method.on{border-color:var(--signal);background:#e2f6f8}
-.method input{accent-color:var(--signal);width:18px;height:18px}
-.pay{
-  width:100%;font:inherit;font-weight:800;font-size:18px;border-radius:16px;padding:15px;
-  cursor:pointer;background:var(--ink);color:#fff;border:2px solid var(--ink);margin-top:14px;
-}
-.pay:active{transform:translateY(1px)}
-#struk{display:none}
-#struk.show{display:block}
-#struk .code{
-  font-family:ui-monospace,"SF Mono",Consolas,monospace;font-size:24px;font-weight:800;
-  letter-spacing:.08em;text-align:center;padding:10px;background:#e2f6f8;border-radius:12px;margin:10px 0;
-}
-#struk p{color:var(--muted);font-size:15px;line-height:1.55}
-#struk p b{color:var(--ink)}
-footer{text-align:center;color:var(--muted);font-size:13.5px;margin-top:20px;line-height:1.6}
-footer a{color:var(--muted);font-weight:700}
-
 .devlbl{display:block;font-weight:800;font-size:15px;margin-bottom:6px}
 #dev{
   width:100%;font:inherit;font-size:16px;padding:12px 14px;border-radius:14px;
@@ -93,15 +66,67 @@ footer a{color:var(--muted);font-weight:700}
 #dev:focus{outline:3px solid var(--amber);outline-offset:1px;border-color:var(--signal)}
 #dev.err{border-color:#d64545;background:#fdf1f1}
 .devhint{color:var(--muted);font-size:13.5px;margin:7px 0 14px;line-height:1.5}
-.qris{text-align:center}
-.qrisbox{
-  width:min(260px,80vw);aspect-ratio:1;margin:4px auto 12px;border:2px dashed var(--signal);
-  border-radius:18px;display:grid;place-items:center;background:#fff;
-  font-weight:800;font-size:26px;letter-spacing:.14em;color:var(--signal);overflow:hidden;
+.receipt{
+  font-family:ui-monospace,"SF Mono",Consolas,monospace;font-size:15px;
+  border-top:2px dashed var(--line);border-bottom:2px dashed var(--line);
+  padding:12px 2px;display:grid;gap:7px;
 }
-.qrisbox img{width:100%;height:100%;object-fit:contain;display:block}
-.qris p{color:var(--muted);font-size:14.5px;line-height:1.55}
-.qris p b{color:var(--ink)}
+.receipt .row{display:flex;justify-content:space-between;gap:10px}
+.receipt .total{font-size:19px;font-weight:800}
+.pay{
+  width:100%;font:inherit;font-weight:800;font-size:18px;border-radius:16px;padding:15px;
+  cursor:pointer;background:var(--ink);color:#fff;border:2px solid var(--ink);margin-top:14px;
+}
+.pay:active{transform:translateY(1px)}
+.pay:disabled{opacity:.45;cursor:not-allowed}
+.secondary{
+  width:100%;font:inherit;font-weight:700;font-size:15px;border-radius:14px;padding:12px;
+  cursor:pointer;background:transparent;color:var(--ink);border:2px solid var(--line);margin-top:10px;
+}
+.merchant-note{color:var(--muted);font-size:13.5px;text-align:center;margin-top:10px;line-height:1.5}
+.merchant-note b{color:var(--ink)}
+.qrview{display:none;margin-top:16px}
+.qrview.show{display:block}
+.qr-frame{
+  background:#fff;border:1px dashed var(--muted);border-radius:16px;padding:14px;
+  display:flex;align-items:center;justify-content:center;margin-bottom:14px;min-height:268px;
+}
+.qr-frame img,.qr-frame canvas{display:block;max-width:100%;height:auto}
+.qr-total-label{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;text-align:center}
+.qr-total{
+  font-family:ui-monospace,"SF Mono",Consolas,monospace;font-weight:700;font-size:30px;
+  text-align:center;margin:2px 0 8px;
+}
+.qr-caption{font-size:13.5px;color:var(--muted);text-align:center;line-height:1.5}
+.txn-line{
+  font-family:ui-monospace,"SF Mono",Consolas,monospace;font-size:12.5px;color:var(--muted);
+  text-align:center;margin:8px 0 4px;
+}
+.download-link{display:block;text-align:center;font-size:13.5px;font-weight:700;color:var(--teal);text-decoration:none;margin:10px 0 2px}
+.status{
+  text-align:center;font-size:14px;font-weight:700;padding:11px 12px;border-radius:12px;margin:12px 0 4px;
+}
+.status.pending{background:#eef3f4;color:var(--muted)}
+.status.claimed{background:var(--amber-soft);color:var(--amber-ink)}
+.status.error{background:var(--red-soft);color:var(--red)}
+.success{display:none;text-align:center}
+.success.show{display:block}
+.success .check{
+  width:62px;height:62px;margin:2px auto 12px;border-radius:50%;
+  background:var(--teal-soft);color:var(--teal);display:grid;place-items:center;font-size:32px;font-weight:800;
+}
+.success h2{color:var(--teal);margin-bottom:6px}
+.success .rows{
+  text-align:left;font-size:14.5px;display:grid;gap:8px;margin:14px 0;
+  border-top:2px dashed var(--line);border-bottom:2px dashed var(--line);padding:12px 2px;
+}
+.success .rows .row{display:flex;justify-content:space-between;gap:12px}
+.success .rows .row span:first-child{color:var(--muted);font-weight:700}
+.success .rows .row span:last-child{font-weight:800;text-align:right;word-break:break-all}
+.success p{color:var(--muted);font-size:14.5px;line-height:1.55}
+.success p b{color:var(--ink)}
+footer{text-align:center;color:var(--muted);font-size:13.5px;margin-top:20px;line-height:1.6}
+footer a{color:var(--muted);font-weight:700}
 </style>
 </head>
 <body>
@@ -110,7 +135,7 @@ footer a{color:var(--muted);font-weight:700}
   <header>
     <span class="logo">📶 R Studio Labs</span>
     <h1>Sewa WiFi</h1>
-    <p class="tag">Internet cepat per jam, tanpa ribet. Pilih durasi, bayar, langsung terhubung.</p>
+    <p class="tag">Internet cepat per jam, tanpa ribet. Pilih durasi, bayar QRIS, langsung terhubung.</p>
   </header>
 
   <section class="card">
@@ -126,9 +151,9 @@ footer a{color:var(--muted);font-weight:700}
   <section class="card">
     <h2>Cara sewa</h2>
     <div class="steps">
-      <div><b>1.</b> Pilih durasi di bawah.</div>
-      <div><b>2.</b> Isi nama perangkatmu, lalu bayar dengan QRIS dan sebutkan kode pesananmu.</div>
-      <div><b>3.</b> Akses WiFi <b>R STUDIO LABS</b> aktif sesuai durasi yang kamu beli.</div>
+      <div><b>1.</b> Pilih durasi dan isi nama perangkatmu.</div>
+      <div><b>2.</b> Buat kode QR, lalu scan &amp; bayar dengan QRIS.</div>
+      <div><b>3.</b> Tekan "Saya Sudah Bayar" — setelah dikonfirmasi, akses WiFi <b>R STUDIO LABS</b> diaktifkan untuk perangkatmu.</div>
     </div>
   </section>
 
@@ -152,29 +177,48 @@ footer a{color:var(--muted);font-weight:700}
     </div>
   </section>
 
-  <section class="card">
+  <section class="card" id="kasirCard">
     <h2>Kasir</h2>
     <label class="devlbl" for="dev">Nama perangkat</label>
     <input id="dev" type="text" placeholder="cth: iPhone 12 / Redmi Note 10" autocomplete="off">
     <p class="devhint">Tulis persis seperti nama perangkatmu yang muncul di daftar perangkat WiFi — nama ini yang dipakai untuk mengaktifkan aksesmu.</p>
+
     <div class="receipt">
       <div class="row"><span>WiFi R STUDIO LABS</span><span id="rItem">1 jam</span></div>
       <div class="row"><span>Harga per jam</span><span>Rp5.000</span></div>
       <div class="row total"><span>TOTAL</span><span id="rTotal">Rp5.000</span></div>
     </div>
-    <h2 style="margin-top:16px">Pembayaran — QRIS</h2>
-    <div class="qris">
-      <div class="qrisbox" id="qrisbox">QRIS</div>
-      <p>Scan dengan <b>e-wallet atau m-banking apa saja</b>, sebesar total di atas.<br>Kami <b>hanya menerima QRIS</b> — tidak menerima tunai / bayar di tempat.</p>
-    </div>
-    <button class="pay" id="pay">Bayar Rp5.000</button>
-  </section>
 
-  <section class="card" id="struk" aria-live="polite">
-    <h2>Pesanan dibuat ✅</h2>
-    <div class="code" id="kode">RSL-000000</div>
-    <p id="strukDetail"></p>
-    <p style="margin-top:8px">Tunjukkan atau sebutkan <b>kode pesanan</b> ini saat membayar. Setelah pembayaran terkonfirmasi, akses WiFi <b>R STUDIO LABS</b> langsung diaktifkan untukmu.</p>
+    <div id="inputView">
+      <button class="pay" id="pay">Buat Kode QR — Bayar Rp5.000</button>
+      <p class="merchant-note">Pembayaran hanya via <b>QRIS</b> (semua e-wallet &amp; m-banking).<br>Nama merchant yang muncul saat scan: <b id="merchantNameEl">…</b><br>Kami tidak menerima tunai / bayar di tempat.</p>
+    </div>
+
+    <div class="qrview" id="qrView">
+      <div class="qr-frame" id="qrFrame"></div>
+      <p class="qr-total-label">Total Tagihan</p>
+      <p class="qr-total" id="qrTotal">Rp 0</p>
+      <p class="qr-caption">Scan pakai GoPay, DANA, OVO, ShopeePay, atau m-banking apa pun yang mendukung QRIS.</p>
+      <p class="txn-line">ID Transaksi: <span id="txnIdEl">-</span></p>
+      <p class="status pending" id="statusEl">Menunggu pembayaran…</p>
+      <button class="pay" id="claimBtn" style="margin-top:10px">Saya Sudah Bayar</button>
+      <a href="#" id="downloadLink" class="download-link">Unduh gambar QR</a>
+      <button class="secondary" id="newTxnBtn">Transaksi Baru</button>
+    </div>
+
+    <div class="success" id="successView">
+      <div class="check">✓</div>
+      <h2>Pembayaran Berhasil</h2>
+      <div class="rows">
+        <div class="row"><span>Total Dibayar</span><span id="sAmount">-</span></div>
+        <div class="row"><span>Perangkat</span><span id="sDevice">-</span></div>
+        <div class="row"><span>Durasi</span><span id="sHours">-</span></div>
+        <div class="row"><span>Waktu</span><span id="sTime">-</span></div>
+        <div class="row"><span>ID Transaksi</span><span id="sTxn">-</span></div>
+      </div>
+      <p>Akses WiFi <b>R STUDIO LABS</b> untuk perangkatmu sedang diaktifkan. Silakan hubungkan perangkatmu ke WiFi <b>R STUDIO LABS</b>.</p>
+      <button class="secondary" id="successNewBtn">Transaksi Baru</button>
+    </div>
   </section>
 
   <footer>
@@ -184,48 +228,193 @@ footer a{color:var(--muted);font-weight:700}
 
 </div>
 
+<script id="config">
+  const CONFIG = {
+    MERCHANT_NAME: "R GAMING STORE",
+    STATIC_QRIS: "00020101021126610014COM.GO-JEK.WWW01189360091431323673960210G1323673960303UMI51440014ID.CO.QRIS.WWW0215ID10264815545600303UMI5204581653033605802ID5914R GAMING STORE6013JAKARTA PUSAT61051053062070703A016304C49E"
+  };
+
+  const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyA33dOynUErLa1_KXieZ4jJUBNGLECs-C8",
+    authDomain: "kasir-7777.firebaseapp.com",
+    projectId: "kasir-7777",
+    storageBucket: "kasir-7777.firebasestorage.app",
+    messagingSenderId: "395690993645",
+    appId: "1:395690993645:web:704bac4b5c95d2be2ce9e4"
+  };
+</script>
+
 <script>
 (function () {
   var HARGA = 5000, MAX = 24;
   var hours = 1;
+
+  // ---------- konfigurasi aktif: fallback lokal, ditimpa Firestore config/qris ----------
+  var activeConfig = { merchantName: CONFIG.MERCHANT_NAME, staticQris: CONFIG.STATIC_QRIS };
+  var merchantNameEl = document.getElementById("merchantNameEl");
+  merchantNameEl.textContent = activeConfig.merchantName;
+
+  var db = null;
+  try {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.firestore();
+    db.collection("config").doc("qris").get().then(function (doc) {
+      if (doc.exists) {
+        var d = doc.data();
+        if (d.merchantName) { activeConfig.merchantName = d.merchantName; merchantNameEl.textContent = d.merchantName; }
+        if (d.staticQris) activeConfig.staticQris = d.staticQris;
+      }
+    }).catch(function (e) { console.error("Gagal ambil config dari Firestore:", e); });
+  } catch (e) {
+    console.error("Firebase init gagal, pakai fallback lokal:", e);
+  }
+
+  // ---------- QRIS dinamis (EMVCo TLV + CRC16) — sama seperti halaman kasir ----------
+  function crc16(str) {
+    var crc = 0xFFFF;
+    for (var i = 0; i < str.length; i++) {
+      crc ^= (str.charCodeAt(i) << 8);
+      for (var j = 0; j < 8; j++) {
+        crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) & 0xFFFF : (crc << 1) & 0xFFFF;
+      }
+    }
+    return crc.toString(16).toUpperCase().padStart(4, "0");
+  }
+  function parseTLV(str) {
+    var tags = [], i = 0;
+    while (i < str.length) {
+      var tag = str.substr(i, 2);
+      var len = parseInt(str.substr(i + 2, 2), 10);
+      tags.push({ tag: tag, value: str.substr(i + 4, len) });
+      i += 4 + len;
+    }
+    return tags;
+  }
+  function buildTLV(tags) {
+    return tags.map(function (t) { return t.tag + String(t.value.length).padStart(2, "0") + t.value; }).join("");
+  }
+  function buildDynamicQRIS(staticStr, amount) {
+    var tags = parseTLV(staticStr.trim()).filter(function (t) { return t.tag !== "63"; });
+    var poi = null;
+    tags.forEach(function (t) { if (t.tag === "01") poi = t; });
+    if (poi) poi.value = "12"; else tags.push({ tag: "01", value: "12" });
+    tags = tags.filter(function (t) { return t.tag !== "54"; });
+    tags.push({ tag: "54", value: String(amount) });
+    tags.sort(function (a, b) { return parseInt(a.tag, 10) - parseInt(b.tag, 10); });
+    var payload = buildTLV(tags) + "6304";
+    return payload + crc16(payload);
+  }
+  function generateTxnCode() {
+    var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789", code = "";
+    for (var i = 0; i < 5; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+    return "WIFI-" + code;
+  }
+
+  // ---------- elemen & state ----------
   var hoursEl = document.getElementById("hours");
   var rItem = document.getElementById("rItem");
   var rTotal = document.getElementById("rTotal");
   var payBtn = document.getElementById("pay");
   var grid = document.getElementById("grid");
   var dev = document.getElementById("dev");
+  var inputView = document.getElementById("inputView");
+  var qrView = document.getElementById("qrView");
+  var qrFrame = document.getElementById("qrFrame");
+  var qrTotal = document.getElementById("qrTotal");
+  var txnIdEl = document.getElementById("txnIdEl");
+  var statusEl = document.getElementById("statusEl");
+  var claimBtn = document.getElementById("claimBtn");
+  var downloadLink = document.getElementById("downloadLink");
+  var successView = document.getElementById("successView");
+
+  var currentTxnId = null, currentTxnCode = null, unsubscribeTxn = null;
 
   function rp(n) { return "Rp" + n.toLocaleString("id-ID"); }
-  function esc(t) {
-    return t.replace(/[&<>"']/g, function (c) {
-      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
-    });
-  }
+  function total() { return hours * HARGA; }
 
   function render() {
     hoursEl.textContent = hours;
     rItem.textContent = hours + " jam";
-    rTotal.textContent = rp(hours * HARGA);
-    payBtn.textContent = "Bayar " + rp(hours * HARGA);
+    rTotal.textContent = rp(total());
+    payBtn.textContent = "Buat Kode QR — Bayar " + rp(total());
     var btns = grid.querySelectorAll(".dur");
     for (var i = 0; i < btns.length; i++) {
       btns[i].classList.toggle("on", +btns[i].getAttribute("data-h") === hours);
     }
   }
 
+  function resetTxn(showInput) {
+    if (unsubscribeTxn) { unsubscribeTxn(); unsubscribeTxn = null; }
+    currentTxnId = null; currentTxnCode = null;
+    qrView.classList.remove("show");
+    successView.classList.remove("show");
+    if (showInput !== false) inputView.style.display = "";
+  }
+
+  function setHours(h) {
+    if (h === hours) return;
+    hours = h;
+    resetTxn(true); // durasi berubah -> QR lama tidak berlaku
+    render();
+  }
+
   grid.addEventListener("click", function (e) {
     var b = e.target.closest(".dur");
-    if (!b) return;
-    hours = +b.getAttribute("data-h");
-    render();
+    if (b) setHours(+b.getAttribute("data-h"));
   });
-  document.getElementById("plus").addEventListener("click", function () {
-    if (hours < MAX) { hours++; render(); }
-  });
-  document.getElementById("minus").addEventListener("click", function () {
-    if (hours > 1) { hours--; render(); }
-  });
+  document.getElementById("plus").addEventListener("click", function () { if (hours < MAX) setHours(hours + 1); });
+  document.getElementById("minus").addEventListener("click", function () { if (hours > 1) setHours(hours - 1); });
   dev.addEventListener("input", function () { dev.classList.remove("err"); });
+
+  function setStatus(state, msg) {
+    statusEl.className = "status " + state;
+    statusEl.textContent = msg;
+  }
+
+  function subscribeToTxn(id) {
+    if (!db) return;
+    if (unsubscribeTxn) unsubscribeTxn();
+    unsubscribeTxn = db.collection("transactions").doc(id).onSnapshot(function (doc) {
+      if (!doc.exists) return;
+      var d = doc.data();
+      if (d.status === "confirmed") showSuccess(d);
+      else if (d.status === "claimed") {
+        setStatus("claimed", "Menunggu konfirmasi admin…");
+        claimBtn.style.display = "none";
+      }
+    }, function (e) { console.error("Gagal pantau transaksi:", e); });
+  }
+
+  function showSuccess(d) {
+    if (unsubscribeTxn) { unsubscribeTxn(); unsubscribeTxn = null; }
+    document.getElementById("sAmount").textContent = rp(total());
+    document.getElementById("sDevice").textContent = dev.value.trim();
+    document.getElementById("sHours").textContent = hours + " jam";
+    var t = new Date();
+    if (d && d.confirmedAt && typeof d.confirmedAt.toDate === "function") t = d.confirmedAt.toDate();
+    document.getElementById("sTime").textContent = t.toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" });
+    document.getElementById("sTxn").textContent = (d && d.transactionId) ? d.transactionId : (currentTxnCode || "-");
+    qrView.classList.remove("show");
+    successView.classList.add("show");
+    successView.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  claimBtn.addEventListener("click", function () {
+    if (!currentTxnId || !db) return;
+    claimBtn.disabled = true;
+    claimBtn.textContent = "Mengirim…";
+    db.collection("transactions").doc(currentTxnId).update({
+      status: "claimed",
+      claimedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(function () {
+      setStatus("claimed", "Menunggu konfirmasi admin…");
+      claimBtn.style.display = "none";
+    }).catch(function (e) {
+      console.error("Gagal klaim:", e);
+      claimBtn.disabled = false;
+      claimBtn.textContent = "Saya Sudah Bayar";
+    });
+  });
 
   payBtn.addEventListener("click", function () {
     var nama = dev.value.trim();
@@ -235,16 +424,66 @@ footer a{color:var(--muted);font-weight:700}
       dev.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
-    var kode = "RSL-" + Math.random().toString(36).slice(2, 8).toUpperCase();
-    document.getElementById("kode").textContent = kode;
-    document.getElementById("strukDetail").innerHTML =
-      "WiFi <b>R STUDIO LABS</b> — <b>" + hours + " jam</b>, total <b>" + rp(hours * HARGA) +
-      "</b>, dibayar via <b>QRIS</b>.<br>Perangkat: <b>" + esc(nama) + "</b>." +
-      " Silakan scan QRIS pada halaman ini sebesar total tersebut, lalu tunjukkan kode pesanan ini.";
-    var s2 = document.getElementById("struk");
-    s2.classList.add("show");
-    s2.scrollIntoView({ behavior: "smooth", block: "center" });
+    payBtn.disabled = true;
+    payBtn.textContent = "Membuat…";
+
+    var payload = buildDynamicQRIS(activeConfig.staticQris, total());
+    qrFrame.innerHTML = "";
+    new QRCode(qrFrame, {
+      text: payload, width: 240, height: 240,
+      colorDark: "#05343f", colorLight: "#ffffff",
+      correctLevel: QRCode.CorrectLevel.M
+    });
+    qrTotal.textContent = rp(total());
+    currentTxnCode = generateTxnCode();
+    txnIdEl.textContent = currentTxnCode;
+
+    setTimeout(function () {
+      var canvas = qrFrame.querySelector("canvas");
+      var img = qrFrame.querySelector("img");
+      downloadLink.href = canvas ? canvas.toDataURL("image/png") : (img ? img.src : "#");
+      downloadLink.download = "qris-wifi-" + total() + ".png";
+    }, 60);
+
+    claimBtn.style.display = "";
+    claimBtn.disabled = false;
+    claimBtn.textContent = "Saya Sudah Bayar";
+    setStatus("pending", "Menunggu pembayaran…");
+
+    currentTxnId = null;
+    if (db) {
+      db.collection("transactions").add({
+        transactionId: currentTxnCode,
+        amount: total(),
+        merchantName: activeConfig.merchantName,
+        status: "pending",
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        service: "wifi",
+        deviceName: nama,
+        hours: hours
+      }).then(function (ref) {
+        currentTxnId = ref.id;
+        subscribeToTxn(currentTxnId);
+      }).catch(function (e) {
+        console.error("Gagal simpan transaksi:", e);
+        setStatus("error", "Gagal menyimpan transaksi. Screenshot QR ini untuk jaga-jaga.");
+        claimBtn.style.display = "none";
+      });
+    } else {
+      setStatus("error", "Koneksi database tidak tersedia. Tunjukkan QR ini ke petugas.");
+      claimBtn.style.display = "none";
+    }
+
+    inputView.style.display = "none";
+    successView.classList.remove("show");
+    qrView.classList.add("show");
+    qrView.scrollIntoView({ behavior: "smooth", block: "center" });
+    payBtn.disabled = false;
+    payBtn.textContent = "Buat Kode QR — Bayar " + rp(total());
   });
+
+  document.getElementById("newTxnBtn").addEventListener("click", function () { resetTxn(true); });
+  document.getElementById("successNewBtn").addEventListener("click", function () { resetTxn(true); });
 
   render();
 })();
