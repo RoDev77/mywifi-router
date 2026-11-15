@@ -1,3 +1,29 @@
 {
-  "cleanUrls": true
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/admin",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/home",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/error",
+      "destination": "/404.html"
+    },
+    {
+      "source": "/verify-user",
+      "destination": "/404.html"
+    },
+    {
+      "source": "/terms-of-service",
+      "destination": "/404.html"
+    },
+    {
+      "source": "/privacy-policy",
+      "destination": "/404.html"
+    }
+  ]
 }
