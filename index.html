@@ -198,7 +198,7 @@ footer a:hover{color:var(--signal)}
     <h2>Cara sewa</h2>
     <div class="steps">
       <div><b>1.</b> Pilih durasi dan isi nomor WhatsApp-mu.</div>
-      <div><b>2.</b> Buat kode QR, lalu scan &amp; bayar dengan QRIS.</div>
+      <div><b>2.</b> Tekan bayar, lalu scan &amp; bayar dengan QRIS.</div>
       <div><b>3.</b> Tekan "Saya Sudah Bayar" — setelah dikonfirmasi, SSID dan password WiFi dikirim ke WhatsApp-mu.</div>
     </div>
   </section>
@@ -236,7 +236,7 @@ footer a:hover{color:var(--signal)}
     </div>
 
     <div id="inputView">
-      <button class="pay" id="pay">Buat Kode QR — Bayar Rp5.000</button>
+      <button class="pay" id="pay">Bayar Sekarang</button>
       <p class="merchant-note">Pembayaran hanya via <b>QRIS</b> (semua e-wallet &amp; m-banking).<br>Nama merchant yang muncul saat scan: <b id="merchantNameEl">…</b><br>Kami tidak menerima tunai / bayar di tempat.</p>
     </div>
 
@@ -382,7 +382,7 @@ footer a:hover{color:var(--signal)}
     hoursEl.textContent = hours;
     rItem.textContent = hours + " jam";
     rTotal.textContent = rp(total());
-    payBtn.textContent = "Buat Kode QR — Bayar " + rp(total());
+    payBtn.textContent = "Bayar Sekarang";
     var btns = grid.querySelectorAll(".dur");
     for (var i = 0; i < btns.length; i++) {
       btns[i].classList.toggle("on", +btns[i].getAttribute("data-h") === hours);
@@ -536,7 +536,7 @@ footer a:hover{color:var(--signal)}
     qrView.classList.add("show");
     qrView.scrollIntoView({ behavior: "smooth", block: "center" });
     payBtn.disabled = false;
-    payBtn.textContent = "Buat Kode QR — Bayar " + rp(total());
+    payBtn.textContent = "Bayar Sekarang";
   });
 
   document.getElementById("newTxnBtn").addEventListener("click", function () { resetTxn(true); });
