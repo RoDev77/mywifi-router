@@ -35,7 +35,7 @@ h1{font-size:28px;font-weight:800;letter-spacing:-.02em;line-height:1.15;margin-
 .sub{margin-top:10px;color:var(--muted);font-size:16px;line-height:1.5;max-width:34ch}
 code{font-family:ui-monospace,"SF Mono",Consolas,monospace;font-size:.95em;color:var(--ink);background:#dff1f4;padding:1px 6px;border-radius:6px}
 .bar{height:6px;border-radius:99px;background:#d3ecf0;margin:20px 0;overflow:hidden}
-.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--signal),var(--amber));transform-origin:left;animation:fill 3s linear forwards}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--signal),var(--amber));transform-origin:left;animation:fill 1.2s linear forwards}
 .stopped .bar i{animation-play-state:paused}
 @keyframes fill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 .actions{display:flex;gap:10px;flex-wrap:wrap}
@@ -70,13 +70,12 @@ code{font-family:ui-monospace,"SF Mono",Consolas,monospace;font-size:.95em;color
   </svg>
 
   <h1>Membuka halaman router</h1>
-  <p class="sub" id="sub" aria-live="polite">Kamu dialihkan ke <code>192.168.0.1</code> dalam <b id="n">3</b> detik.</p>
+  <p class="sub" id="sub" aria-live="polite">Kamu sedang dialihkan ke <code>192.168.0.1</code>. Kalau tidak pindah otomatis, tekan tombol di bawah.</p>
 
   <div class="bar" aria-hidden="true"><i></i></div>
 
   <div class="actions">
     <a class="go" id="go" href="http://192.168.0.1">Buka sekarang</a>
-    <button id="stop" type="button">Batalkan</button>
   </div>
 
   <p class="note">Halaman ini hanya berfungsi saat kamu tersambung ke WiFi rumah. Kalau router tidak terbuka, coba <a href="http://tplinkwifi.net">tplinkwifi.net</a>.</p>
@@ -85,25 +84,7 @@ code{font-family:ui-monospace,"SF Mono",Consolas,monospace;font-size:.95em;color
 <script>
 (function () {
   var ROUTER_URL = "http://192.168.0.1";
-  var left = 3, timer;
-  var n = document.getElementById("n");
-  var sub = document.getElementById("sub");
-  var card = document.getElementById("card");
-
-  function tick() {
-    left--;
-    if (left <= 0) { location.replace(ROUTER_URL); return; }
-    n.textContent = left;
-    timer = setTimeout(tick, 1000);
-  }
-  timer = setTimeout(tick, 1000);
-
-  document.getElementById("stop").addEventListener("click", function () {
-    clearTimeout(timer);
-    card.classList.add("stopped");
-    sub.textContent = "Pengalihan dibatalkan. Tekan Buka sekarang kalau sudah siap.";
-    document.getElementById("go").focus();
-  });
+  location.replace(ROUTER_URL);
 })();
 </script>
 </body>
