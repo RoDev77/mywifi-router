@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>R STUDIO LABS — Sewa WiFi</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%20role%3D%22img%22%20aria-label%3D%22Logo%20R%20STUDIO%20LABS%22%3E%0A%20%20%3Cdefs%3E%0A%20%20%20%20%3ClinearGradient%20id%3D%22rsl-bg%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%220%22%20stop-color%3D%22%2305343f%22%2F%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%220.55%22%20stop-color%3D%22%230b6e80%22%2F%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%221%22%20stop-color%3D%22%230fa3b8%22%2F%3E%0A%20%20%20%20%3C%2FlinearGradient%3E%0A%20%20%3C%2Fdefs%3E%0A%20%20%3Crect%20x%3D%222%22%20y%3D%222%22%20width%3D%2260%22%20height%3D%2260%22%20rx%3D%2216%22%20fill%3D%22url%28%23rsl-bg%29%22%2F%3E%0A%20%20%3Crect%20x%3D%2215.5%22%20y%3D%2215%22%20width%3D%226.5%22%20height%3D%2234%22%20rx%3D%223.25%22%20fill%3D%22%23ffffff%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M21%2018%20H33%20A8%208%200%200%201%2033%2034%20H21%22%20fill%3D%22none%22%20stroke%3D%22%23ffffff%22%20stroke-width%3D%226.5%22%2F%3E%0A%20%20%3Cpath%20d%3D%22M27.5%2034%20L40%2045.75%22%20fill%3D%22none%22%20stroke%3D%22%23ffffff%22%20stroke-width%3D%226.5%22%20stroke-linecap%3D%22round%22%2F%3E%0A%20%20%3Ccircle%20cx%3D%2229%22%20cy%3D%2226%22%20r%3D%222.8%22%20fill%3D%22%23ffb703%22%2F%3E%0A%3C%2Fsvg%3E">
 <meta name="description" content="Sewa WiFi R STUDIO LABS, Rp5.000 per jam. Pilih durasi, bayar QRIS, langsung terhubung.">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
@@ -17,79 +18,114 @@
   color-scheme:light;
 }
 *{box-sizing:border-box;margin:0}
+::selection{background:var(--amber);color:var(--ink)}
+html{scroll-behavior:smooth}
 body{
   color:var(--ink);
-  background:radial-gradient(900px 520px at 50% -12%,#bdeaf0 0,transparent 70%),var(--bg);
+  background:
+    radial-gradient(700px 420px at 85% -5%, rgba(255,183,3,.14) 0, transparent 60%),
+    radial-gradient(900px 520px at 50% -12%, #bdeaf0 0, transparent 70%),
+    var(--bg);
   font-family:ui-rounded,"SF Pro Rounded","Segoe UI",system-ui,sans-serif;
-  padding:22px 16px 40px;
+  padding:26px 16px 44px;
 }
 .wrap{width:min(560px,100%);margin:0 auto}
-header{text-align:center;margin-bottom:18px}
+header{text-align:center;margin-bottom:20px}
 .logo{
-  display:inline-flex;align-items:center;gap:8px;font-weight:800;letter-spacing:.06em;
-  font-size:14px;color:var(--signal);text-transform:uppercase;
+  display:inline-flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.07em;
+  font-size:15px;color:var(--signal);text-transform:uppercase;
 }
-h1{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1.1;margin-top:6px}
-.tag{color:var(--muted);margin-top:8px;font-size:16px;line-height:1.5}
+.logo svg{filter:drop-shadow(0 5px 10px rgba(5,52,63,.28));border-radius:9px}
+h1{
+  font-size:clamp(32px,8.5vw,40px);font-weight:800;letter-spacing:-.02em;line-height:1.08;margin-top:10px;
+  background:linear-gradient(120deg,var(--ink) 30%,#0b6e80 90%);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+}
+.tag{color:var(--muted);margin:10px auto 0;font-size:16px;line-height:1.55;max-width:420px}
 .card{
-  background:var(--card);border:1px solid var(--line);border-radius:24px;
-  padding:20px;margin-bottom:14px;box-shadow:0 24px 44px -30px rgba(5,52,63,.35);
+  background:linear-gradient(180deg,#ffffff 0%,var(--card) 90%);
+  border:1px solid var(--line);border-radius:24px;
+  padding:22px 20px;margin-bottom:14px;
+  box-shadow:0 1px 2px rgba(5,52,63,.05),0 24px 44px -28px rgba(5,52,63,.35);
 }
 .card h2{font-size:17px;font-weight:800;margin-bottom:12px}
 .wifi{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .wifi .name{font-size:20px;font-weight:800}
-.wifi .price{font-size:20px;font-weight:800;color:var(--signal)}
-.wifi .price small{display:block;font-size:12.5px;color:var(--muted);font-weight:600;text-align:right}
+.wifi .price{
+  font-size:21px;font-weight:800;color:#fff;text-align:right;
+  background:linear-gradient(135deg,#0b6e80,var(--signal));
+  padding:9px 14px;border-radius:14px;box-shadow:0 10px 18px -10px rgba(15,163,184,.65);
+}
+.wifi .price small{display:block;font-size:12px;color:#d9f4f8;font-weight:700;text-align:right}
 .steps{display:grid;gap:8px;color:var(--muted);font-size:15px;line-height:1.5}
 .steps b{color:var(--ink)}
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .dur{
   font:inherit;font-weight:800;font-size:17px;padding:14px 6px;border-radius:16px;cursor:pointer;
   background:#fff;border:2px solid var(--line);color:var(--ink);text-align:center;
+  transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease, background .15s ease;
 }
 .dur small{display:block;font-size:12.5px;font-weight:700;color:var(--muted);margin-top:2px}
-.dur.on{border-color:var(--signal);background:#e2f6f8;box-shadow:inset 0 0 0 1px var(--signal)}
+.dur:hover{transform:translateY(-2px);border-color:var(--signal);box-shadow:0 10px 18px -12px rgba(5,52,63,.35)}
+.dur:active{transform:scale(.97)}
+.dur.on{
+  border-color:var(--signal);
+  background:linear-gradient(180deg,#eafafd,#d9f2f6);
+  box-shadow:inset 0 0 0 1px var(--signal),0 10px 18px -12px rgba(15,163,184,.55);
+}
 .dur:focus-visible,.pay:focus-visible,.stepbtn:focus-visible,.secondary:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
 .custom{display:flex;align-items:center;justify-content:space-between;margin-top:14px;gap:10px}
 .custom .lbl{font-weight:700;font-size:15px}
 .stepper{display:flex;align-items:center;gap:12px}
 .stepbtn{
   font:inherit;font-weight:800;font-size:20px;width:42px;height:42px;border-radius:12px;cursor:pointer;
-  background:var(--ink);color:#fff;border:2px solid var(--ink);line-height:1;
+  background:linear-gradient(180deg,#0a4553,var(--ink));color:#fff;border:2px solid var(--ink);line-height:1;
+  box-shadow:0 8px 14px -8px rgba(5,52,63,.6);transition:transform .12s ease, filter .12s ease;
 }
+.stepbtn:hover{filter:brightness(1.18)}
+.stepbtn:active{transform:scale(.94)}
 .stepper .val{font-size:19px;font-weight:800;min-width:74px;text-align:center}
 .devlbl{display:block;font-weight:800;font-size:15px;margin-bottom:6px}
 #dev{
   width:100%;font:inherit;font-size:16px;padding:12px 14px;border-radius:14px;
   border:2px solid var(--line);background:#fff;color:var(--ink);
+  transition:border-color .15s ease, box-shadow .15s ease;
 }
-#dev:focus{outline:3px solid var(--amber);outline-offset:1px;border-color:var(--signal)}
+#dev:focus{outline:none;border-color:var(--signal);box-shadow:0 0 0 4px rgba(255,183,3,.35)}
 #dev.err{border-color:#d64545;background:#fdf1f1}
 .devhint{color:var(--muted);font-size:13.5px;margin:7px 0 14px;line-height:1.5}
 .receipt{
   font-family:ui-monospace,"SF Mono",Consolas,monospace;font-size:15px;
-  border-top:2px dashed var(--line);border-bottom:2px dashed var(--line);
-  padding:12px 2px;display:grid;gap:7px;
+  background:#fff;border:1.5px dashed var(--line);border-radius:16px;
+  padding:14px 14px;display:grid;gap:7px;
+  box-shadow:inset 0 1px 0 rgba(5,52,63,.04);
 }
 .receipt .row{display:flex;justify-content:space-between;gap:10px}
-.receipt .total{font-size:19px;font-weight:800}
+.receipt .total{font-size:19px;font-weight:800;border-top:1.5px dashed var(--line);padding-top:8px}
 .pay{
   width:100%;font:inherit;font-weight:800;font-size:18px;border-radius:16px;padding:15px;
-  cursor:pointer;background:var(--ink);color:#fff;border:2px solid var(--ink);margin-top:14px;
+  cursor:pointer;color:#fff;border:2px solid var(--ink);margin-top:14px;
+  background:linear-gradient(135deg,#0a5566,var(--ink));
+  box-shadow:0 14px 24px -12px rgba(5,52,63,.55);
+  transition:transform .12s ease, filter .12s ease, box-shadow .12s ease;
 }
+.pay:hover:not(:disabled){filter:brightness(1.12);transform:translateY(-1px)}
 .pay:active{transform:translateY(1px)}
 .pay:disabled{opacity:.45;cursor:not-allowed}
 .secondary{
   width:100%;font:inherit;font-weight:700;font-size:15px;border-radius:14px;padding:12px;
   cursor:pointer;background:transparent;color:var(--ink);border:2px solid var(--line);margin-top:10px;
+  transition:background .12s ease, border-color .12s ease;
 }
-.merchant-note{color:var(--muted);font-size:13.5px;text-align:center;margin-top:10px;line-height:1.5}
+.secondary:hover{background:#eef8fa;border-color:var(--signal)}
+.merchant-note{color:var(--muted);font-size:13.5px;text-align:center;margin-top:12px;line-height:1.55}
 .merchant-note b{color:var(--ink)}
 .qrview{display:none;margin-top:16px}
 .qrview.show{display:block}
 .qr-frame{
-  background:#fff;border:1px dashed var(--muted);border-radius:16px;padding:14px;
+  background:#fff;border:1.5px dashed var(--muted);border-radius:20px;padding:14px;
   display:flex;align-items:center;justify-content:center;margin-bottom:14px;min-height:268px;
+  box-shadow:0 16px 30px -22px rgba(5,52,63,.45);
 }
 .qr-frame img,.qr-frame canvas{display:block;max-width:100%;height:auto}
 .qr-total-label{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;text-align:center}
@@ -103,8 +139,10 @@ h1{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1.1;margin-t
   text-align:center;margin:8px 0 4px;
 }
 .download-link{display:block;text-align:center;font-size:13.5px;font-weight:700;color:var(--teal);text-decoration:none;margin:10px 0 2px}
+.download-link:hover{text-decoration:underline}
 .status{
   text-align:center;font-size:14px;font-weight:700;padding:11px 12px;border-radius:12px;margin:12px 0 4px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5);
 }
 .status.pending{background:#eef3f4;color:var(--muted)}
 .status.claimed{background:var(--amber-soft);color:var(--amber-ink)}
@@ -113,27 +151,47 @@ h1{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1.1;margin-t
 .success.show{display:block}
 .success .check{
   width:62px;height:62px;margin:2px auto 12px;border-radius:50%;
-  background:var(--teal-soft);color:var(--teal);display:grid;place-items:center;font-size:32px;font-weight:800;
+  background:linear-gradient(145deg,#1aa37f,var(--teal));color:#fff;
+  display:grid;place-items:center;font-size:32px;font-weight:800;
+  box-shadow:0 14px 24px -12px rgba(21,122,99,.6);
 }
 .success h2{color:var(--teal);margin-bottom:6px}
 .success .rows{
   text-align:left;font-size:14.5px;display:grid;gap:8px;margin:14px 0;
-  border-top:2px dashed var(--line);border-bottom:2px dashed var(--line);padding:12px 2px;
+  background:#fff;border:1.5px dashed var(--line);border-radius:16px;padding:14px;
 }
 .success .rows .row{display:flex;justify-content:space-between;gap:12px}
 .success .rows .row span:first-child{color:var(--muted);font-weight:700}
 .success .rows .row span:last-child{font-weight:800;text-align:right;word-break:break-all}
 .success p{color:var(--muted);font-size:14.5px;line-height:1.55}
 .success p b{color:var(--ink)}
-footer{text-align:center;color:var(--muted);font-size:13.5px;margin-top:20px;line-height:1.6}
+footer{text-align:center;color:var(--muted);font-size:13.5px;margin-top:22px;line-height:1.6}
 footer a{color:var(--muted);font-weight:700}
+footer a:hover{color:var(--signal)}
+@media (max-width:420px){
+  .card{padding:18px 15px}
+  .wifi .price{font-size:19px}
+}
 </style>
 </head>
 <body>
 <div class="wrap">
 
   <header>
-    <span class="logo">📶 R Studio Labs</span>
+    <span class="logo"><svg width="34" height="34" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Logo R STUDIO LABS">
+  <defs>
+    <linearGradient id="rsl-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#05343f"/>
+      <stop offset="0.55" stop-color="#0b6e80"/>
+      <stop offset="1" stop-color="#0fa3b8"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#rsl-bg)"/>
+  <rect x="15.5" y="15" width="6.5" height="34" rx="3.25" fill="#ffffff"/>
+  <path d="M21 18 H33 A8 8 0 0 1 33 34 H21" fill="none" stroke="#ffffff" stroke-width="6.5"/>
+  <path d="M27.5 34 L40 45.75" fill="none" stroke="#ffffff" stroke-width="6.5" stroke-linecap="round"/>
+  <circle cx="29" cy="26" r="2.8" fill="#ffb703"/>
+</svg> R Studio Labs</span>
     <h1>Sewa WiFi</h1>
     <p class="tag">Internet cepat per jam, tanpa ribet. Pilih durasi, bayar QRIS, langsung terhubung.</p>
   </header>
