@@ -625,9 +625,11 @@
       const txnIdText = t.transactionId ? escapeHtml(t.transactionId) : '—';
       const rowClass = newlyArrivedIds.includes(doc.id) ? 'txn-item new-txn' : 'txn-item';
       const waDigits = String(t.whatsapp || '').replace(/\D/g, '').replace(/^0/, '62').replace(/^8/, '628');
+      const waText = encodeURIComponent(teksWa(t));
       const wifiLine = t.service === 'wifi'
         ? `<div class="txn-wifi">📶 WiFi — WA: ${escapeHtml(t.whatsapp || t.deviceName || '-')} · ${escapeHtml(String(t.hours ?? '-'))} jam</div>` +
-          (waDigits ? `<div style="margin-top:4px"><button type="button" class="wa-btn" data-wa-id="${doc.id}" style="font-size:11.5px;font-weight:700;color:var(--teal);background:none;border:none;padding:0;cursor:pointer;font-family:inherit">Kirim SSID &amp; Password + Struk via WA ↗</button></div>` : '')
+          (waDigits ? `<div style="margin-top:4px"><a href="https://wa.me/${waDigits}?text=${waText}" target="_blank" rel="noopener" style="font-size:11.5px;font-weight:700;color:var(--teal)">Kirim SSID &amp; Password via WA ↗</a></div>` : '') +
+          `<div style="margin-top:2px"><button type="button" class="struk-btn" data-struk-id="${doc.id}" style="font-size:11.5px;font-weight:700;color:var(--teal);background:none;border:none;padding:0;cursor:pointer;font-family:inherit">🖼️ Gambar Struk — Salin</button></div>`
         : '';
 
       let actionHtml;
@@ -668,10 +670,10 @@
         if (txnData) printReceipt(txnData);
       });
     });
-    list.querySelectorAll('.wa-btn').forEach((btn) => {
+    list.querySelectorAll('.struk-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
-        const txnData = txnCache.get(btn.dataset.waId);
-        if (txnData) kirimWaDenganStruk(txnData, btn);
+        const txnData = txnCache.get(btn.dataset.strukId);
+        if (txnData) salinStruk(txnData, btn);
       });
     });
   }
@@ -786,33 +788,30 @@
     });
   }
 
-  async function kirimWaDenganStruk(t, btn){
-    const digits = String(t.whatsapp || '').replace(/\D/g, '').replace(/^0/, '62').replace(/^8/, '628');
-    const text = teksWa(t);
+  async function salinStruk(t, btn){
     const oldLabel = btn.textContent;
     btn.disabled = true; btn.textContent = 'Menyiapkan struk...';
     try {
       const blob = await gambarStrukBlob(t);
-      const file = new File([blob], 'struk-' + (t.transactionId || 'wifi') + '.png', { type: 'image/png' });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      let tersalin = false;
+      if (navigator.clipboard && window.ClipboardItem) {
         try {
-          await navigator.share({ files: [file], text: text });
-          btn.textContent = oldLabel; btn.disabled = false; return;
-        } catch (e) {
-          if (e && e.name === 'AbortError') { btn.textContent = oldLabel; btn.disabled = false; return; }
-        }
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+          tersalin = true;
+        } catch (e) {}
       }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = file.name;
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
-      if (digits) window.open('https://wa.me/' + digits + '?text=' + encodeURIComponent(text), '_blank');
-      btn.textContent = 'Struk terunduh - lampirkan di WA ya';
-      setTimeout(() => { btn.textContent = oldLabel; btn.disabled = false; }, 4000);
+      if (!tersalin) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'struk-' + (t.transactionId || 'wifi') + '.png';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+      }
+      btn.textContent = tersalin ? 'Struk tersalin - tempel di WA (Ctrl+V)' : 'Struk terunduh - kirim manual di WA';
+      setTimeout(() => { btn.textContent = oldLabel; btn.disabled = false; }, 3500);
     } catch (e) {
-      btn.textContent = oldLabel; btn.disabled = false;
-      if (digits) window.open('https://wa.me/' + digits + '?text=' + encodeURIComponent(text), '_blank');
+      btn.textContent = 'Gagal membuat struk';
+      setTimeout(() => { btn.textContent = oldLabel; btn.disabled = false; }, 2500);
     }
   }
 
