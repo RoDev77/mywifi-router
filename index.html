@@ -84,6 +84,24 @@ h1{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1.1;margin-t
 #struk p b{color:var(--ink)}
 footer{text-align:center;color:var(--muted);font-size:13.5px;margin-top:20px;line-height:1.6}
 footer a{color:var(--muted);font-weight:700}
+
+.devlbl{display:block;font-weight:800;font-size:15px;margin-bottom:6px}
+#dev{
+  width:100%;font:inherit;font-size:16px;padding:12px 14px;border-radius:14px;
+  border:2px solid var(--line);background:#fff;color:var(--ink);
+}
+#dev:focus{outline:3px solid var(--amber);outline-offset:1px;border-color:var(--signal)}
+#dev.err{border-color:#d64545;background:#fdf1f1}
+.devhint{color:var(--muted);font-size:13.5px;margin:7px 0 14px;line-height:1.5}
+.qris{text-align:center}
+.qrisbox{
+  width:min(260px,80vw);aspect-ratio:1;margin:4px auto 12px;border:2px dashed var(--signal);
+  border-radius:18px;display:grid;place-items:center;background:#fff;
+  font-weight:800;font-size:26px;letter-spacing:.14em;color:var(--signal);overflow:hidden;
+}
+.qrisbox img{width:100%;height:100%;object-fit:contain;display:block}
+.qris p{color:var(--muted);font-size:14.5px;line-height:1.55}
+.qris p b{color:var(--ink)}
 </style>
 </head>
 <body>
@@ -109,7 +127,7 @@ footer a{color:var(--muted);font-weight:700}
     <h2>Cara sewa</h2>
     <div class="steps">
       <div><b>1.</b> Pilih durasi di bawah.</div>
-      <div><b>2.</b> Bayar via QRIS atau tunai, sebutkan kode pesananmu.</div>
+      <div><b>2.</b> Isi nama perangkatmu, lalu bayar dengan QRIS dan sebutkan kode pesananmu.</div>
       <div><b>3.</b> Akses WiFi <b>R STUDIO LABS</b> aktif sesuai durasi yang kamu beli.</div>
     </div>
   </section>
@@ -136,15 +154,18 @@ footer a{color:var(--muted);font-weight:700}
 
   <section class="card">
     <h2>Kasir</h2>
+    <label class="devlbl" for="dev">Nama perangkat</label>
+    <input id="dev" type="text" placeholder="cth: iPhone 12 / Redmi Note 10" autocomplete="off">
+    <p class="devhint">Tulis persis seperti nama perangkatmu yang muncul di daftar perangkat WiFi — nama ini yang dipakai untuk mengaktifkan aksesmu.</p>
     <div class="receipt">
       <div class="row"><span>WiFi R STUDIO LABS</span><span id="rItem">1 jam</span></div>
       <div class="row"><span>Harga per jam</span><span>Rp5.000</span></div>
       <div class="row total"><span>TOTAL</span><span id="rTotal">Rp5.000</span></div>
     </div>
-    <h2 style="margin-top:16px">Metode pembayaran</h2>
-    <div class="methods">
-      <label class="method on"><input type="radio" name="m" value="QRIS" checked> QRIS — semua e-wallet &amp; m-banking</label>
-      <label class="method"><input type="radio" name="m" value="Tunai"> Tunai — bayar di tempat</label>
+    <h2 style="margin-top:16px">Pembayaran — QRIS</h2>
+    <div class="qris">
+      <div class="qrisbox" id="qrisbox">QRIS</div>
+      <p>Scan dengan <b>e-wallet atau m-banking apa saja</b>, sebesar total di atas.<br>Kami <b>hanya menerima QRIS</b> — tidak menerima tunai / bayar di tempat.</p>
     </div>
     <button class="pay" id="pay">Bayar Rp5.000</button>
   </section>
@@ -172,8 +193,14 @@ footer a{color:var(--muted);font-weight:700}
   var rTotal = document.getElementById("rTotal");
   var payBtn = document.getElementById("pay");
   var grid = document.getElementById("grid");
+  var dev = document.getElementById("dev");
 
   function rp(n) { return "Rp" + n.toLocaleString("id-ID"); }
+  function esc(t) {
+    return t.replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
 
   function render() {
     hoursEl.textContent = hours;
@@ -198,29 +225,25 @@ footer a{color:var(--muted);font-weight:700}
   document.getElementById("minus").addEventListener("click", function () {
     if (hours > 1) { hours--; render(); }
   });
-
-  var methods = document.querySelectorAll(".method");
-  methods.forEach(function (m) {
-    m.addEventListener("click", function () {
-      methods.forEach(function (x) { x.classList.remove("on"); });
-      m.classList.add("on");
-      m.querySelector("input").checked = true;
-    });
-  });
+  dev.addEventListener("input", function () { dev.classList.remove("err"); });
 
   payBtn.addEventListener("click", function () {
+    var nama = dev.value.trim();
+    if (!nama) {
+      dev.classList.add("err");
+      dev.focus();
+      dev.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
     var kode = "RSL-" + Math.random().toString(36).slice(2, 8).toUpperCase();
-    var metode = document.querySelector('input[name="m"]:checked').value;
     document.getElementById("kode").textContent = kode;
     document.getElementById("strukDetail").innerHTML =
       "WiFi <b>R STUDIO LABS</b> — <b>" + hours + " jam</b>, total <b>" + rp(hours * HARGA) +
-      "</b>, metode <b>" + metode + "</b>." +
-      (metode === "QRIS"
-        ? " Silakan scan QRIS yang tersedia di lokasi sebesar total tersebut."
-        : " Silakan bayar tunai di tempat sebesar total tersebut.");
-    var s = document.getElementById("struk");
-    s.classList.add("show");
-    s.scrollIntoView({ behavior: "smooth", block: "center" });
+      "</b>, dibayar via <b>QRIS</b>.<br>Perangkat: <b>" + esc(nama) + "</b>." +
+      " Silakan scan QRIS pada halaman ini sebesar total tersebut, lalu tunjukkan kode pesanan ini.";
+    var s2 = document.getElementById("struk");
+    s2.classList.add("show");
+    s2.scrollIntoView({ behavior: "smooth", block: "center" });
   });
 
   render();
