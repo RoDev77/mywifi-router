@@ -95,6 +95,7 @@ h1{
 #dev.err{border-color:#d64545;background:#fdf1f1}
 .devhint{color:var(--muted);font-size:13.5px;margin:7px 0 14px;line-height:1.5}
 .devhint.warn{color:#d64545;font-weight:700}
+.ppn-note{color:var(--muted);font-size:13px;margin-top:12px;text-align:center}
 .receipt{
   font-family:ui-monospace,"SF Mono",Consolas,monospace;font-size:15px;
   background:#fff;border:1.5px dashed var(--line);border-radius:16px;
@@ -221,6 +222,7 @@ footer a:hover{color:var(--signal)}
         <button class="stepbtn" id="plus" aria-label="Tambah jam">+</button>
       </div>
     </div>
+  <p class="ppn-note">Harga belum termasuk PPN 11% (maksimal Rp1.000) — rincian lengkap ada di struk kasir.</p>
   </section>
 
   <section class="card" id="kasirCard">
@@ -232,7 +234,9 @@ footer a:hover{color:var(--signal)}
     <div class="receipt">
       <div class="row"><span>WiFi R STUDIO LABS</span><span id="rItem">1 jam</span></div>
       <div class="row"><span>Harga per jam</span><span>Rp5.000</span></div>
-      <div class="row total"><span>TOTAL</span><span id="rTotal">Rp5.000</span></div>
+      <div class="row"><span>Subtotal</span><span id="rSub">Rp5.000</span></div>
+      <div class="row"><span>PPN 11%</span><span id="rPpn">Rp550</span></div>
+      <div class="row total"><span>TOTAL</span><span id="rTotal">Rp5.550</span></div>
     </div>
 
     <div id="inputView">
@@ -360,6 +364,8 @@ footer a:hover{color:var(--signal)}
   var hoursEl = document.getElementById("hours");
   var rItem = document.getElementById("rItem");
   var rTotal = document.getElementById("rTotal");
+  var rSub = document.getElementById("rSub");
+  var rPpn = document.getElementById("rPpn");
   var payBtn = document.getElementById("pay");
   var grid = document.getElementById("grid");
   var dev = document.getElementById("dev");
@@ -376,11 +382,15 @@ footer a:hover{color:var(--signal)}
   var currentTxnId = null, currentTxnCode = null, unsubscribeTxn = null, currentWa = "";
 
   function rp(n) { return "Rp" + n.toLocaleString("id-ID"); }
-  function total() { return hours * HARGA; }
+  function subtotal() { return hours * HARGA; }
+  function ppn() { return Math.min(Math.round(subtotal() * 0.11), 1000); }
+  function total() { return subtotal() + ppn(); }
 
   function render() {
     hoursEl.textContent = hours;
     rItem.textContent = hours + " jam";
+    rSub.textContent = rp(subtotal());
+    rPpn.textContent = rp(ppn());
     rTotal.textContent = rp(total());
     payBtn.textContent = "Bayar Sekarang";
     var btns = grid.querySelectorAll(".dur");
