@@ -1,18 +1,17 @@
 # mywifi-router
 
-Halaman pintasan untuk membuka halaman admin router rumah.
+Situs **R STUDIO LABS — Sewa WiFi** (Rp5.000/jam), terpasang di proyek Vercel
+**mywifi-router** (tim rodiiis-projects) dan domain **mywifi.rstudiolab.tech**.
 
-- Menghitung mundur 3 detik, lalu mengalihkan pengunjung ke `http://192.168.0.1`
-  (alamat router di jaringan rumah pengunjung sendiri).
-- Ada tombol "Buka sekarang" dan "Batalkan", plus fallback `tplinkwifi.net`.
-- Halaman ini hanya berfungsi saat perangkat tersambung ke WiFi rumah.
+## Isi
 
-## Deploy ke Vercel
+- `index.html` — halaman sewa WiFi ala kasir: pilih durasi (1/2/3/5/10/24 jam
+  atau atur sendiri), ringkasan struk dengan total otomatis, metode bayar
+  QRIS/tunai, tombol Bayar menghasilkan kode pesanan (format RSL-XXXXXX).
+- `admin.html` — halaman peluncur ke menu admin router rumah: langsung
+  mengalihkan ke `http://192.168.0.1`. Ditautkan kecil di footer situs
+  ("Area petugas: Admin Router"). Hanya berfungsi di WiFi rumah.
 
-Impor repo ini di [vercel.com/new](https://vercel.com/new) sebagai proyek statis
-(tanpa framework, tanpa perintah build). `index.html` di root adalah halamannya.
+## Deploy
 
-## Status
-
-Terhubung ke proyek Vercel **mywifi-router** (tim rodiiis-projects).
-Setiap push ke branch `main` memicu deployment produksi otomatis.
+Setiap push ke branch `main` memicu deployment produksi otomatis di Vercel.
