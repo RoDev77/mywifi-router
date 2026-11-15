@@ -96,6 +96,7 @@ h1{
 .devhint{color:var(--muted);font-size:13.5px;margin:7px 0 14px;line-height:1.5}
 .devhint.warn{color:#d64545;font-weight:700}
 .ppn-note{color:var(--muted);font-size:13px;margin-top:12px;text-align:center}
+.fee-note{color:var(--muted);font-size:12px;margin-top:8px;line-height:1.5}
 .receipt{
   font-family:ui-monospace,"SF Mono",Consolas,monospace;font-size:15px;
   background:#fff;border:1.5px dashed var(--line);border-radius:16px;
@@ -222,7 +223,7 @@ footer a:hover{color:var(--signal)}
         <button class="stepbtn" id="plus" aria-label="Tambah jam">+</button>
       </div>
     </div>
-  <p class="ppn-note">Harga belum termasuk PPN 11% (maksimal Rp1.000) — rincian lengkap ada di struk kasir.</p>
+  <p class="ppn-note">Harga belum termasuk biaya layanan 11% (maksimal Rp1.000) — rincian lengkap ada di struk kasir.</p>
   </section>
 
   <section class="card" id="kasirCard">
@@ -235,9 +236,11 @@ footer a:hover{color:var(--signal)}
       <div class="row"><span>WiFi R STUDIO LABS</span><span id="rItem">1 jam</span></div>
       <div class="row"><span>Harga per jam</span><span>Rp5.000</span></div>
       <div class="row"><span>Subtotal</span><span id="rSub">Rp5.000</span></div>
-      <div class="row"><span>PPN 11%</span><span id="rPpn">Rp550</span></div>
+      <div class="row"><span>Biaya Layanan</span><span id="rPpn">Rp550</span></div>
       <div class="row total"><span>TOTAL</span><span id="rTotal">Rp5.550</span></div>
     </div>
+
+    <p class="fee-note">* Biaya layanan digunakan untuk meningkatkan layanan agar lebih baik lagi.</p>
 
     <div id="inputView">
       <button class="pay" id="pay">Bayar Sekarang</button>
