@@ -587,6 +587,7 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
 
   const SESSION_KEY = 'qris_admin_discord_token';
   let txnUnsub = null;
+  let adminPollTimer = null;
 
   // ---------- notifikasi transaksi baru masuk ----------
   let audioCtx = null;
@@ -671,6 +672,7 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
 
   function logout(){
     if (txnUnsub) { txnUnsub(); txnUnsub = null; }
+    clearInterval(adminPollTimer);
     localStorage.removeItem(SESSION_KEY);
     history.replaceState(null, '', window.location.pathname);
     showOnly(loginView);
@@ -781,6 +783,7 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
 
   function subscribeTransactions(adminUsername){
     if (txnUnsub) txnUnsub();
+    clearInterval(adminPollTimer);
     txnUnsub = db.collection('transactions')
       .orderBy('createdAt', 'desc')
       .limit(200)
@@ -803,8 +806,14 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
           notifyNewIncomingTxn();
         }
       }, (err) => {
-        document.getElementById('txnList').innerHTML = '<p class="muted">Gagal memuat transaksi.</p>';
+        document.getElementById('txnList').innerHTML = '<p class="muted">Realtime terblokir — mencoba mode polling…</p>';
         console.error('Gagal subscribe transaksi:', err);
+        clearInterval(adminPollTimer);
+        adminPollTimer = setInterval(() => {
+          db.collection('transactions').orderBy('createdAt', 'desc').limit(200).get()
+            .then((snap) => renderTxnList(snap.docs, adminUsername))
+            .catch(() => {});
+        }, 10000);
       });
   }
 

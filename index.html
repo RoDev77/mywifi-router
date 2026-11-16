@@ -714,6 +714,8 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
 
   function resetTxn(showInput) {
     if (unsubscribeTxn) { unsubscribeTxn(); unsubscribeTxn = null; }
+    clearInterval(pollTxnTimer);
+    pollTxnTimer = null;
     currentTxnId = null; currentTxnCode = null;
     extensionOf = null;
     voucher = null; voucherWa = "";
@@ -757,19 +759,30 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
     statusEl.textContent = msg;
   }
 
+  var pollTxnTimer = null;
+  function handleTxnDoc(doc) {
+    if (!doc.exists) return;
+    var d = doc.data();
+    if (d.status === "confirmed") showSuccess(d);
+    else if (d.status === "claimed") {
+      setStatus("claimed", "Menunggu konfirmasi admin…");
+      claimBtn.style.display = "none";
+      document.getElementById("claimNote").style.display = "block";
+    }
+  }
   function subscribeToTxn(id) {
     if (!db) return;
-    if (unsubscribeTxn) unsubscribeTxn();
-    unsubscribeTxn = db.collection("transactions").doc(id).onSnapshot(function (doc) {
-      if (!doc.exists) return;
-      var d = doc.data();
-      if (d.status === "confirmed") showSuccess(d);
-      else if (d.status === "claimed") {
-        setStatus("claimed", "Menunggu konfirmasi admin…");
-        claimBtn.style.display = "none";
-        document.getElementById("claimNote").style.display = "block";
-      }
-    }, function (e) { console.error("Gagal pantau transaksi:", e); });
+    if (unsubscribeTxn) { unsubscribeTxn(); unsubscribeTxn = null; }
+    clearInterval(pollTxnTimer);
+    var ref = db.collection("transactions").doc(id);
+    unsubscribeTxn = ref.onSnapshot(handleTxnDoc, function (e) {
+      console.error("Realtime terblokir, beralih ke polling:", e);
+      if (unsubscribeTxn) { unsubscribeTxn(); unsubscribeTxn = null; }
+      clearInterval(pollTxnTimer);
+      pollTxnTimer = setInterval(function () {
+        ref.get().then(handleTxnDoc).catch(function () {});
+      }, 8000);
+    });
   }
 
   function showSuccess(d) {
@@ -866,7 +879,7 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
         ...(voucher ? { voucher: voucher.code, discount: voucher.amount } : {})
       });
       if (voucher){
-        batch.create(db.collection("voucherUses").doc(voucher.code + "_" + currentWa), {
+        batch.set(db.collection("voucherUses").doc(voucher.code + "_" + currentWa), {
           code: voucher.code,
           whatsapp: currentWa,
           transactionId: currentTxnCode,
