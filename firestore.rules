@@ -1,0 +1,29 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Transaksi: pelanggan membuat & mengklaim, admin mengubah status/field sewa.
+    // Aplikasi belum memakai Firebase Auth, jadi aturan ini sengaja terbuka
+    // untuk create/update. Tambahkan Firebase Auth + custom claim jika ingin
+    // membatasi aksi admin hanya untuk akun tertentu.
+    match /transactions/{doc} {
+      allow read, create, update: if true;
+    }
+
+    // Konfigurasi QRIS/merchant (ditulis panel admin, dibaca kasir).
+    match /config/{doc} {
+      allow read, create, update: if true;
+    }
+
+    // Voucher/kode promo.
+    match /vouchers/{doc} {
+      allow read, create, update: if true;
+    }
+
+    // Daftar admin (dibaca saat pengecekan role Discord).
+    match /users/{doc} {
+      allow read: if true;
+    }
+  }
+}

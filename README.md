@@ -44,10 +44,24 @@ di-cache. Tombol pasang muncul otomatis saat browser mendukung prompt install.
 - `vouchers/{KODE}` — `code`, `type` (`fixed`/`percent`), `value`, `quota`,
   `used`, `active`, `createdAt`.
 
-> **Catatan deployment:** aturan Firestore harus mengizinkan `read` pada
-> `vouchers` untuk pelanggan dan `write` untuk admin, serta `update` pada
-> `transactions` (field baru). Domain produksi juga harus terdaftar di
-> Firebase → Authentication → Authorized Domains agar query Firestore jalan.
+## Firebase
+
+Proyek aktif: **`sewa-wifi-78784`** (config ada di `index.html`, `petugas.html`,
+dan `verify-user.html`). Proyek lama `kasir-7777` tidak dipakai lagi — data
+transaksi lama tidak otomatis berpindah.
+
+Aturan Firestore disimpan di `firestore.rules` dan sudah mengizinkan
+read/create/update pada `transactions`, `config`, dan `vouchers` (delete tidak
+diizinkan). Deploy ulang dengan:
+
+```
+firebase deploy --only firestore:rules --project sewa-wifi-78784
+```
+
+> Aplikasi belum memakai Firebase Auth, sehingga rules tidak bisa membedakan
+> admin dan pelanggan. Untuk panel admin, pastikan dokumen
+> `users/{discordUserId}` dengan field `role: "admin"` dibuat di proyek baru
+> agar pengecekan role Discord tetap berfungsi.
 
 ## Deploy
 
