@@ -421,7 +421,7 @@ html[data-theme="light"] .dur.on{background:linear-gradient(180deg,var(--signal-
     </details>
     <details>
       <summary>Kapan WiFi mulai aktif?</summary>
-      <p>Durasi sewa dihitung sejak admin mengirim SSID dan password ke WhatsApp-mu, bukan sejak pembayaran. Sisa waktunya bisa dipantau lewat halaman Cek Status Pesanan.</p>
+      <p>Durasi sewa dimulai saat admin menekan tombol <strong>Mulai Sewa</strong> setelah SSID dan password dikirim ke WhatsApp-mu — bukan sejak pembayaran. Sisa waktunya bisa dipantau lewat halaman Cek Status Pesanan.</p>
     </details>
     <details>
       <summary>Metode pembayaran apa saja?</summary>
@@ -684,7 +684,6 @@ html[data-theme="light"] .dur.on{background:linear-gradient(180deg,var(--signal-
   }
 
   function showSuccess(d) {
-    if (unsubscribeTxn) { unsubscribeTxn(); unsubscribeTxn = null; }
     document.getElementById("sAmount").textContent = rp(total());
     document.getElementById("sDevice").textContent = currentWa;
     document.getElementById("sHours").textContent = hours + " jam";
@@ -695,8 +694,9 @@ html[data-theme="light"] .dur.on{background:linear-gradient(180deg,var(--signal-
     startExpiry(d);
     document.getElementById("sTxn").textContent = (d && d.transactionId) ? d.transactionId : (currentTxnCode || "-");
     qrView.classList.remove("show");
+    var firstTime = !successView.classList.contains("show");
     successView.classList.add("show");
-    successView.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (firstTime) successView.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
   claimBtn.addEventListener("click", function () {
@@ -831,15 +831,24 @@ html[data-theme="light"] .dur.on{background:linear-gradient(180deg,var(--signal-
   });
 
   var expiryTimer = null;
+  function dateOfTxn(v){
+    if (v && typeof v.toDate === "function") return v.toDate();
+    return v instanceof Date ? v : null;
+  }
   function startExpiry(d){
     clearInterval(expiryTimer);
     var el = document.getElementById("sExpiry");
-    var start = new Date();
-    if (d && d.confirmedAt && typeof d.confirmedAt.toDate === "function") start = d.confirmedAt.toDate();
-    var end = new Date(start.getTime() + hours * 3600000);
+    var start = dateOfTxn(d && d.startedAt);
+    if (!start){
+      el.textContent = "Belum dimulai — menunggu admin";
+      return;
+    }
+    var jam = Number(d && d.hours) || hours || 0;
+    if (!jam){ el.textContent = "Durasi tidak tersedia"; return; }
+    var end = new Date(start.getTime() + jam * 3600000);
     function update(){
       var sisa = end.getTime() - Date.now();
-      if (sisa <= 0){ el.textContent = "Berakhir — sewa lagi"; clearInterval(expiryTimer); return; }
+      if (sisa <= 0){ el.textContent = "Masa sewa habis"; clearInterval(expiryTimer); return; }
       var j = Math.floor(sisa / 3600000), m = Math.floor((sisa % 3600000) / 60000), dtk = Math.floor((sisa % 60000) / 1000);
       el.textContent = j + " jam " + m + " menit " + dtk + " detik";
     }
@@ -854,7 +863,7 @@ html[data-theme="light"] .dur.on{background:linear-gradient(180deg,var(--signal-
   // --- cek status pesanan ---
   var trackExpiryTimer = null;
   function waFormat(s){
-    var d = String(s || "").replace(/D/g, "");
+    var d = String(s || "").replace(/\D/g, "");
     if (d.charAt(0) === "0") d = "62" + d.slice(1);
     else if (d.charAt(0) === "8") d = "62" + d;
     return d;
@@ -875,7 +884,7 @@ html[data-theme="light"] .dur.on{background:linear-gradient(180deg,var(--signal-
     if (!db){ setTrackError("Koneksi database belum tersedia. Coba muat ulang halaman."); return; }
     var btn = document.getElementById("trackBtn");
     btn.disabled = true; btn.textContent = "…";
-    var digits = raw.replace(/D/g, "");
+    var digits = raw.replace(/\D/g, "");
     function query(field, value){
       return db.collection("transactions").where(field, "==", value).limit(1).get()
         .then(function(s){ return s.empty ? null : s.docs[0].data(); });
@@ -896,15 +905,20 @@ html[data-theme="light"] .dur.on{background:linear-gradient(180deg,var(--signal-
         document.getElementById("trTime").textContent = created ? created.toLocaleString("id-ID", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "-";
         var exp = document.getElementById("trExpiry");
         if (data.status === "confirmed"){
-          var start = data.confirmedAt && typeof data.confirmedAt.toDate === "function" ? data.confirmedAt.toDate() : new Date();
-          var end = new Date(start.getTime() + (Number(data.hours) || 0) * 3600000);
-          function tick(){
-            var sisa = end.getTime() - Date.now();
-            if (sisa <= 0){ exp.textContent = "⏰ Masa sewa sudah berakhir."; clearInterval(trackExpiryTimer); return; }
-            exp.textContent = "⏱ Sisa waktu: " + Math.floor(sisa/3600000) + " jam " + Math.floor((sisa%3600000)/60000) + " menit " + Math.floor((sisa%60000)/1000) + " detik";
+          var start = dateOfTxn(data.startedAt);
+          if (!start){
+            exp.textContent = "⏳ Waktu sewa belum dimulai. Admin akan memulainya setelah SSID & password dikirim ke WhatsApp-mu.";
+          } else {
+            var jamSewa = Number(data.hours) || 0;
+            var end = new Date(start.getTime() + jamSewa * 3600000);
+            function tick(){
+              var sisa = end.getTime() - Date.now();
+              if (sisa <= 0){ exp.textContent = "⏰ Masa sewa sudah habis. Silakan sewa lagi."; clearInterval(trackExpiryTimer); return; }
+              exp.textContent = "⏱ Sisa waktu sewa: " + Math.floor(sisa/3600000) + " jam " + Math.floor((sisa%3600000)/60000) + " menit " + Math.floor((sisa%60000)/1000) + " detik";
+            }
+            tick();
+            trackExpiryTimer = setInterval(tick, 1000);
           }
-          tick();
-          trackExpiryTimer = setInterval(tick, 1000);
         } else if (data.status === "claimed"){
           exp.textContent = "✓ Pembayaran diterima. Admin sedang memverifikasi — SSID & password menyusul ke WhatsApp.";
         } else {

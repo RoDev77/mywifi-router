@@ -65,7 +65,7 @@
     <h2>Pertanyaan umum</h2>
     <details>
       <summary>Kapan WiFi aktif?</summary>
-      <p>Durasi sewa dimulai ketika admin mengirim SSID dan password WiFi ke WhatsApp-mu setelah pembayaran dikonfirmasi. Sisa waktu akan tampil otomatis di halaman ini.</p>
+      <p>Durasi sewa dimulai ketika admin menekan tombol <strong>Mulai Sewa</strong> setelah SSID dan password WiFi dikirim ke WhatsApp-mu. Sisa waktu akan tampil otomatis di halaman ini.</p>
     </details>
     <details>
       <summary>Status saya "Menunggu konfirmasi", apa yang harus dilakukan?</summary>
@@ -119,7 +119,7 @@
   try { firebase.initializeApp(FIREBASE_CONFIG); db = firebase.firestore(); }
   catch (e) { console.error("Firebase init gagal:", e); }
 
-  var currentId = null, expiryTimer = null;
+  var currentId = null, expiryTimer = null, lastQuery = "", autoRefreshing = false;
   var resultEl = document.getElementById("result");
   var statusEl = document.getElementById("rStatus");
   var expiryEl = document.getElementById("rExpiry");
@@ -154,10 +154,11 @@
     var steps = [
       { key: "created", label: "Pesanan dibuat", done: true, sub: "QRIS siap dibayar" },
       { key: "claimed", label: "Pembayaran dikirim", done: data.status !== "pending", sub: "Menunggu verifikasi admin" },
-      { key: "confirmed", label: "Pembayaran terkonfirmasi", done: data.status === "confirmed", sub: "SSID & password dikirim ke WhatsApp" }
+      { key: "confirmed", label: "Pembayaran terkonfirmasi", done: data.status === "confirmed", sub: "Admin memverifikasi pembayaran" },
+      { key: "started", label: "Waktu sewa dimulai", done: !!dateOf(data.startedAt), sub: "SSID & password sudah dikirim ke WhatsApp" }
     ];
     var html = steps.map(function (s) {
-      var cls = s.done ? "done" : (s.key === "claimed" && data.status === "pending" ? "current" : "");
+      var cls = s.done ? "done" : ((s.key === "started" && data.status === "confirmed") ? "current" : (s.key === "claimed" && data.status === "pending" ? "current" : ""));
       return '<div class="timeline-step ' + cls + '"><span class="dot">' + (s.done ? "✓" : "·") + '</span><div><b>' + s.label + '</b><small>' + s.sub + '</small></div></div>';
     }).join("");
     document.getElementById("rTimeline").innerHTML = html;
@@ -165,16 +166,21 @@
 
   function tickExpiry(data) {
     clearInterval(expiryTimer);
-    var start = dateOf(data.confirmedAt) || new Date();
+    var start = dateOf(data.startedAt);
+    if (!start) {
+      expiryEl.textContent = "⏳ Waktu sewa belum dimulai. Admin akan memulainya setelah SSID & password dikirim ke WhatsApp-mu.";
+      return;
+    }
     var hours = Number(data.hours) || 0;
+    if (!hours) { expiryEl.textContent = "Durasi sewa tidak tersedia."; return; }
     var end = new Date(start.getTime() + hours * 3600000);
     function update() {
       var sisa = end.getTime() - Date.now();
-      if (sisa <= 0) { expiryEl.textContent = "⏰ Masa sewa sudah berakhir. Silakan sewa lagi untuk melanjutkan."; return; }
+      if (sisa <= 0) { expiryEl.textContent = "⏰ Masa sewa sudah habis. Silakan sewa lagi untuk melanjutkan."; clearInterval(expiryTimer); return; }
       var j = Math.floor(sisa / 3600000);
       var m = Math.floor((sisa % 3600000) / 60000);
-      var d = Math.floor((sisa % 60000) / 1000);
-      expiryEl.textContent = "⏱ Sisa waktu sewa: " + j + " jam " + m + " menit " + d + " detik";
+      var detik = Math.floor((sisa % 60000) / 1000);
+      expiryEl.textContent = "⏱ Sisa waktu sewa: " + j + " jam " + m + " menit " + detik + " detik";
     }
     update();
     expiryTimer = setInterval(update, 1000);
@@ -199,7 +205,7 @@
     else if (data.status === "claimed") expiryEl.textContent = "✓ Pembayaran sudah kami terima. Admin sedang memverifikasi — SSID & password menyusul ke WhatsApp-mu.";
     else expiryEl.textContent = "📲 Scan QRIS pada halaman pembayaran, lalu tekan tombol Saya Sudah Bayar.";
     resultEl.hidden = false;
-    resultEl.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (!autoRefreshing) resultEl.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
   function findBy(field, value) {
@@ -211,6 +217,7 @@
     e.preventDefault();
     var raw = document.getElementById("query").value.trim();
     if (!raw) { toast("Masukkan ID transaksi atau nomor WhatsApp dulu."); return; }
+    lastQuery = raw;
     if (!db) { showError("Koneksi database belum tersedia. Coba muat ulang halaman."); return; }
     var btn = document.getElementById("lookupBtn");
     btn.disabled = true;
@@ -240,6 +247,14 @@
         .catch(function () { toast("Gagal menyalin. Salin manual: " + currentId); });
     } else toast("ID transaksi: " + currentId);
   });
+
+  setInterval(function(){
+    if (lastQuery && !resultEl.hidden && !autoRefreshing){
+      autoRefreshing = true;
+      document.getElementById('lookupForm').requestSubmit();
+      autoRefreshing = false;
+    }
+  }, 15000);
 
   var params = new URLSearchParams(location.search);
   var preset = params.get("id") || params.get("wa");

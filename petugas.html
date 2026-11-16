@@ -233,6 +233,15 @@ button.sound-toggle:hover{background:var(--signal-soft)}
 }
 .print-btn:hover{background:var(--signal-soft);transform:translateY(-1px)}
 .print-btn svg{flex-shrink:0}
+.txn-actions{flex-wrap:wrap;justify-content:flex-end}
+.start-btn{
+  font-family:var(--sans);font-weight:800;font-size:11px;color:#fff;white-space:nowrap;
+  background:linear-gradient(135deg,#f5a300,var(--amber-ink));border:none;border-radius:10px;padding:8px 11px;cursor:pointer;
+  box-shadow:0 8px 14px -8px rgba(138,98,0,.8);transition:filter .14s ease,transform .14s ease;
+}
+.start-btn:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.start-btn:disabled{opacity:.5;cursor:wait}
+.start-countdown{font-size:11px;font-weight:800;color:var(--teal);white-space:nowrap}
 
 /* ---------- struk cetak ---------- */
 #printReceipt{display:none}
@@ -771,9 +780,13 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
 
       let actionHtml;
       if (t.status === 'confirmed'){
+        const mulai = t.startedAt && typeof t.startedAt.toDate === 'function' ? t.startedAt.toDate() : null;
         actionHtml = `
           <div class="txn-actions">
             <span class="muted" style="font-size:11px;">oleh ${t.confirmedBy ? 'admin' : '-'}</span>
+            ${mulai
+              ? `<span class="start-countdown" data-started-at="${mulai.getTime()}" data-hours="${escapeHtml(String(t.hours ?? 0))}">⏱ ${formatSisa(mulai, t.hours)}</span>`
+              : `<button type="button" class="start-btn" data-start-id="${doc.id}">▶ Mulai Sewa</button>`}
             <button type="button" class="print-btn" data-print-id="${doc.id}" title="Cetak struk">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
               Cetak
@@ -813,6 +826,9 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
         if (txnData) salinStruk(txnData, btn);
       });
     });
+    list.querySelectorAll('.start-btn').forEach((btn) => {
+      btn.addEventListener('click', () => startSewa(btn.dataset.startId, adminUsername, btn));
+    });
     allTxnDocs = docs;
     updateStats(docs);
     applyTxnFilters();
@@ -839,6 +855,45 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
   let allTxnDocs = [];
   let activeFilter = 'all';
   let searchTerm = '';
+
+  function formatSisa(start, hours){
+    const jam = Number(hours) || 0;
+    if (!jam) return 'Durasi -';
+    const sisa = start.getTime() + jam * 3600000 - Date.now();
+    if (sisa <= 0) return '⏰ Habis';
+    const j = Math.floor(sisa / 3600000), m = Math.floor((sisa % 3600000) / 60000);
+    return '⏱ Sisa ' + j + 'j ' + m + 'm';
+  }
+
+  setInterval(() => {
+    document.querySelectorAll('.start-countdown').forEach((el) => {
+      const start = new Date(Number(el.dataset.startedAt));
+      if (!isNaN(start.getTime())) el.textContent = formatSisa(start, el.dataset.hours);
+    });
+  }, 1000);
+
+  async function startSewa(id, adminUsername, btn){
+    const txn = txnCache.get(id);
+    if (!txn) return;
+    const pesan = 'Mulai waktu sewa untuk ' + (txn.transactionId || 'transaksi ini') + '?\n\n' +
+      'Pastikan SSID & password SUDAH dikirim ke WhatsApp ' + (txn.whatsapp || 'pembeli') + '.\n' +
+      'Waktu sewa akan berjalan sejak tombol ini ditekan.';
+    if (!confirm(pesan)) return;
+    btn.disabled = true;
+    btn.textContent = 'Memulai…';
+    try{
+      await db.collection('transactions').doc(id).update({
+        startedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        startedBy: adminUsername || 'admin'
+      });
+      btn.textContent = '✓ Berjalan';
+    }catch(err){
+      console.error('Gagal mulai sewa:', err);
+      btn.disabled = false;
+      btn.textContent = '▶ Mulai Sewa';
+      alert('Gagal memulai waktu sewa. Coba lagi.');
+    }
+  }
 
   function updateStats(docs){
     const today = new Date();
@@ -954,7 +1009,7 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
   const receiptHours         = document.getElementById('receiptHours');
 
   function teksWa(t){
-    return 'Halo, pembayaran Sewa WiFi R STUDIO LABS kamu sudah terkonfirmasi.\nID Transaksi: ' + (t.transactionId || '-') + ' (' + (t.hours ?? '-') + ' jam, Rp ' + formatRp(t.amount) + ')\nSSID: R STUDIO LABS\nPassword: \nCatatan: Durasi dimulai ketika admin mengirim pesan ini.\nTerima kasih!';
+    return 'Halo, pembayaran Sewa WiFi R STUDIO LABS kamu sudah terkonfirmasi.\nID Transaksi: ' + (t.transactionId || '-') + ' (' + (t.hours ?? '-') + ' jam, Rp ' + formatRp(t.amount) + ')\nSSID: R STUDIO LABS\nPassword: \nCatatan: Durasi dimulai ketika admin menekan tombol "Mulai Sewa" di panel admin setelah pesan ini dikirim.\nTerima kasih!';
   }
 
   function gambarStrukBlob(t){
