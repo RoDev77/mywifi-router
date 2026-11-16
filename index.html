@@ -400,6 +400,23 @@ html[data-theme="light"] .dur.on{background:linear-gradient(180deg,var(--signal-
 .share-btn{margin-top:8px}
 html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
 
+
+.cancel-btn{width:100%;font:inherit;font-weight:800;font-size:13px;padding:11px;border-radius:13px;cursor:pointer;margin-top:10px;background:transparent;color:var(--red);border:1.5px solid var(--red-soft);transition:background .14s ease}
+.cancel-btn:hover{background:var(--red-soft)}
+.cancel-btn:disabled{opacity:.5;cursor:wait}
+.cred-box{margin-top:14px;background:var(--signal-soft);border:1.5px dashed var(--signal);border-radius:15px;padding:14px;text-align:left}
+.cred-box[hidden]{display:none}
+.cred-title{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:800;color:var(--signal-deep);margin-bottom:8px;text-align:center}
+.cred-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px dashed var(--line)}
+.cred-row:last-child{border-bottom:0}
+.cred-row span{font-size:11px;color:var(--muted);font-weight:700;flex-shrink:0}
+.cred-row b{font-family:var(--mono);font-size:14px;font-weight:800;word-break:break-all;flex:1}
+.cred-copy{font:inherit;font-size:11px;font-weight:800;color:var(--signal-deep);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:5px 9px;cursor:pointer;white-space:nowrap}
+.cred-copy:hover{background:var(--soft)}
+.help-line{font-size:11.5px;color:var(--muted);text-align:center;margin-top:12px;line-height:1.6}
+.help-line[hidden]{display:none}
+.help-line a{color:var(--signal-deep);font-weight:800;text-decoration:none;border-bottom:1px solid rgba(14,165,183,.35)}
+.notif-btn{margin-top:10px;font-size:13px !important}
 </style>
 <script src="pwa.js" defer></script>
 </head>
@@ -451,8 +468,14 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
         <div><span>Total</span><b id="trTotal">-</b></div>
         <div><span>Waktu</span><b id="trTime">-</b></div>
       </div>
+      <div class="cred-box" id="trCredBox" hidden>
+        <div class="cred-title">Kredensial WiFi kamu</div>
+        <div class="cred-row"><span>SSID</span><b id="trCredSsid">-</b><button class="cred-copy" data-copy="trCredSsid" type="button">Salin</button></div>
+        <div class="cred-row"><span>Password</span><b id="trCredPass">-</b><button class="cred-copy" data-copy="trCredPass" type="button">Salin</button></div>
+      </div>
       <p class="track-expiry" id="trExpiry"></p>
       <p class="track-hint" id="trExtNote" style="display:none;color:var(--teal);font-weight:800"></p>
+      <p class="help-line" id="trHelpLine" hidden>Butuh bantuan? WhatsApp admin: <a id="trAdminWaLink" href="#" target="_blank" rel="noopener">••••<span id="trAdminWaTail"></span></a></p>
       <div class="progress" id="trProgress" style="display:none"><i></i></div>
       <button class="link-btn" id="trCopy" type="button">Salin ID transaksi</button>
     </div>
@@ -511,7 +534,7 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
     <h2>Kasir</h2>
     <label class="devlbl" for="dev">Nomor WhatsApp</label>
     <input id="dev" type="tel" inputmode="tel" placeholder="cth: 0812 3456 7890" autocomplete="tel">
-    <p class="devhint" id="devHint">Nomor ini dipakai untuk mengirim SSID dan password WiFi setelah pembayaranmu terkonfirmasi, termasuk informasi penting lainnya.</p>
+    <p class="devhint" id="devHint">Nomor WhatsApp hanya dipakai kalau kamu butuh bantuan dengan pesanan ini. Kredensial WiFi akan tampil otomatis di halaman setelah pembayaran dikonfirmasi.</p>
 
     <div class="voucher-row">
       <input id="voucherInput" type="text" placeholder="Kode promo (opsional)" autocomplete="off" maxlength="24">
@@ -542,9 +565,11 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
       <p class="qr-caption">Scan pakai GoPay, DANA, OVO, ShopeePay, atau m-banking apa pun yang mendukung QRIS.</p>
       <p class="txn-line">ID Transaksi: <span id="txnIdEl">-</span></p>
       <p class="status pending" id="statusEl">Menunggu pembayaran…</p>
-      <p class="claim-note" id="claimNote" style="display:none">Catatan: SSID &amp; password WiFi akan dikirim ke WhatsApp-mu dalam waktu 1x30 menit setelah pembayaran dikonfirmasi admin.<br>Durasi dimulai ketika admin mengirim SSID &amp; password.</p>
+      <p class="claim-note" id="claimNote" style="display:none">Setelah membayar, tekan <b>Saya Sudah Bayar</b>. SSID &amp; password akan muncul otomatis di halaman ini begitu admin memproses — tidak perlu menunggu pesan WhatsApp.</p>
       <button class="pay" id="claimBtn" style="margin-top:10px">Saya Sudah Bayar</button>
+      <button class="secondary notif-btn" id="notifBtn" type="button">🔔 Aktifkan notifikasi pembayaran</button>
       <a href="#" id="downloadLink" class="download-link">Unduh gambar QR</a>
+      <button class="cancel-btn" id="cancelBtn" type="button">Batalkan pesanan ini</button>
       <button class="secondary" id="newTxnBtn">Transaksi Baru</button>
     </div>
 
@@ -559,7 +584,13 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
         <div class="row"><span>Waktu</span><span id="sTime">-</span></div>
         <div class="row"><span>ID Transaksi</span><span id="sTxn">-</span></div>
       </div>
-      <p>SSID dan password WiFi <b>R STUDIO LABS</b> akan dikirim ke nomor WhatsApp di atas. Silakan cek WhatsApp-mu sebentar lagi.</p>
+      <div class="cred-box" id="credBox" hidden>
+        <div class="cred-title">Kredensial WiFi kamu</div>
+        <div class="cred-row"><span>SSID</span><b id="credSsid">-</b><button class="cred-copy" data-copy="credSsid" type="button">Salin</button></div>
+        <div class="cred-row"><span>Password</span><b id="credPass">-</b><button class="cred-copy" data-copy="credPass" type="button">Salin</button></div>
+      </div>
+      <p>Kredensial WiFi tampil di atas setelah pembayaran dikonfirmasi. WhatsApp hanya dipakai kalau kamu butuh bantuan.</p>
+      <p class="help-line" id="helpLine" hidden>Butuh bantuan? WhatsApp admin: <a id="adminWaLink" href="#" target="_blank" rel="noopener">••••<span id="adminWaTail"></span></a></p>
       <div class="progress" id="sProgress"><i></i></div>
       <div class="extend-box">
         <div class="extend-title">Perpanjang waktu sewa</div>
@@ -688,6 +719,7 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
 
   var currentTxnId = null, currentTxnCode = null, unsubscribeTxn = null, currentWa = "";
   var extensionOf = null, voucher = null, voucherWa = "", extendHours = 1;
+  var notifTxn = null, adminWa = "";
 
   function rp(n) { return "Rp" + n.toLocaleString("id-ID"); }
   function subtotal() { return hours * HARGA; }
@@ -759,6 +791,40 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
     statusEl.textContent = msg;
   }
 
+  function showCredentials(d, box, ssidId, passId){
+    var el = document.getElementById(box);
+    var c = d && d.credentials;
+    if (!c || !c.ssid){ el.hidden = true; return; }
+    document.getElementById(ssidId).textContent = c.ssid;
+    document.getElementById(passId).textContent = c.password || "-";
+    el.hidden = false;
+  }
+  function notifyConfirmed(d){
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+    var key = d && d.transactionId ? d.transactionId : "txn";
+    if (notifTxn === key) return;
+    notifTxn = key;
+    try{ new Notification("Pembayaran dikonfirmasi", { body: "SSID & password WiFi sudah tersedia. Buka halaman sewa untuk melihatnya.", tag: "rsl-" + key }); }
+    catch(e){}
+  }
+  function loadAdminWa(){
+    if (!db) return;
+    db.collection("config").doc("wa").get().then(function(doc){
+      if (!doc.exists) return;
+      adminWa = String((doc.data().number || "").replace(/\D/g, ""));
+      if (adminWa.length < 8) return;
+      ["helpLine","trHelpLine"].forEach(function(id){
+        var el = document.getElementById(id);
+        if (!el) return;
+        var a = el.querySelector("a");
+        if (a) a.href = "https://wa.me/" + adminWa;
+        var tail = el.querySelector("span");
+        if (tail) tail.textContent = adminWa.slice(-4);
+        el.hidden = false;
+      });
+    }).catch(function(){});
+  }
+
   var pollTxnTimer = null;
   function handleTxnDoc(doc) {
     if (!doc.exists) return;
@@ -778,11 +844,17 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
             if (baseSnap.exists){
               currentTxnId = baseSnap.id;
               currentTxnCode = baseData.transactionId || currentTxnCode;
+              showCredentials(baseData, "credBox", "credSsid", "credPass");
+              notifyConfirmed(baseData);
               showSuccess(baseData);
             } else showSuccess(d);
           }).catch(function(){ showSuccess(d); });
         })();
-      } else showSuccess(d);
+      } else {
+        showCredentials(d, "credBox", "credSsid", "credPass");
+        notifyConfirmed(d);
+        showSuccess(d);
+      }
     }
     else if (d.status === "claimed") {
       setStatus("claimed", "Menunggu konfirmasi admin…");
@@ -815,6 +887,7 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
     try { localStorage.removeItem("rsl_active_txn"); } catch (e) {}
     startExpiry(d);
     document.getElementById("sTxn").textContent = (d && d.transactionId) ? d.transactionId : (currentTxnCode || "-");
+    showCredentials(d, "credBox", "credSsid", "credPass");
     qrView.classList.remove("show");
     var firstTime = !successView.classList.contains("show");
     successView.classList.add("show");
@@ -1005,6 +1078,39 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
     expiryTimer = setInterval(update, 1000);
   }
 
+  document.getElementById("notifBtn").addEventListener("click", function(){
+    if (!("Notification" in window)){ toast("Browser tidak mendukung notifikasi."); return; }
+    Notification.requestPermission().then(function(p){
+      toast(p === "granted" ? "Notifikasi diaktifkan." : "Notifikasi tidak diizinkan browser.");
+    });
+  });
+  document.getElementById("cancelBtn").addEventListener("click", function(){
+    if (!currentTxnId || !db){ toast("Tidak ada pesanan yang bisa dibatalkan."); return; }
+    if (!confirm("Batalkan pesanan ini? QRIS tidak lagi berlaku.")) return;
+    var btn = this;
+    btn.disabled = true; btn.textContent = "Membatalkan…";
+    db.collection("transactions").doc(currentTxnId).update({
+      status: "cancelled",
+      cancelledAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(function(){
+      if (voucher){
+        db.collection("voucherUses").doc(voucher.code + "_" + currentWa).delete().catch(function(){});
+        db.collection("vouchers").doc(voucher.code).update({ used: firebase.firestore.FieldValue.increment(-1) }).catch(function(){});
+      }
+      toast("Pesanan dibatalkan. Kode promo bisa dipakai lagi.");
+      resetTxn(true);
+    }).catch(function(e){
+      console.error(e);
+      btn.disabled = false; btn.textContent = "Batalkan pesanan ini";
+      toast("Gagal membatalkan pesanan.");
+    });
+  });
+  document.querySelectorAll("[data-copy]").forEach(function(b){
+    b.addEventListener("click", function(){
+      copyText(document.getElementById(b.dataset.copy).textContent, "Tersalin.");
+    });
+  });
+
   document.getElementById("copyTxnBtn").addEventListener("click", function(){
     copyText(currentTxnCode, "ID transaksi tersalin.");
   });
@@ -1073,9 +1179,10 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
         if (!data){ setTrackError("Transaksi tidak ditemukan. Periksa kembali ID atau nomor WhatsApp-mu."); return; }
         clearInterval(trackExpiryTimer);
         var st = document.getElementById("trStatus");
-        var label = data.status === "expired" ? "Selesai" : (data.status === "confirmed" ? "Terkonfirmasi" : (data.status === "claimed" ? "Menunggu konfirmasi" : "Menunggu pembayaran"));
+        var label = data.status === "expired" ? "Selesai" : (data.status === "cancelled" ? "Dibatalkan" : (data.status === "confirmed" ? "Terkonfirmasi" : (data.status === "claimed" ? "Menunggu konfirmasi" : "Menunggu pembayaran")));
         st.className = "badge-status " + ((data.status === "confirmed" || data.status === "expired") ? "confirmed" : (data.status === "claimed" ? "claimed" : ""));
         st.textContent = label;
+        showCredentials(data, "trCredBox", "trCredSsid", "trCredPass");
         document.getElementById("trId").textContent = data.transactionId || "-";
         document.getElementById("trHours").textContent = (data.hours || "-") + " jam";
         document.getElementById("trTotal").textContent = rp((Number(data.amount) || 0) + (data._extAmount || 0));
@@ -1190,6 +1297,9 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
         voucher = null; voucherWa = ""; setVoucherMsg("Kode promo tidak ditemukan.", false); render(); return null;
       }
       var v = doc.data();
+      if (v.expiresAt && new Date(String(v.expiresAt).length === 10 ? v.expiresAt + "T23:59:59" : v.expiresAt) < new Date()){
+        voucher = null; voucherWa = ""; setVoucherMsg("Kode promo sudah kedaluwarsa.", false); render(); return null;
+      }
       if (Number(v.quota) >= 0 && Number(v.used || 0) >= Number(v.quota)){
         voucher = null; voucherWa = ""; setVoucherMsg("Kuota kode promo sudah habis.", false); render(); return null;
       }
@@ -1249,6 +1359,7 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
     } else copyText(text, "Detail status tersalin.");
   });
 
+  loadAdminWa();
   render();
   restoreSession();
 })();

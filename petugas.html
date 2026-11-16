@@ -346,6 +346,10 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
 .mini-btn:hover{background:var(--signal-soft)}
 .mini-btn.danger{color:var(--red)}
 .badge--expired{background:var(--soft);color:var(--muted)}
+.badge--cancelled{background:var(--red-soft);color:var(--red)}
+.cred-form{display:flex;flex-direction:column;gap:5px;margin-top:7px;align-items:flex-end}
+.cred-form input{width:150px;font-size:11px;padding:7px 8px;border-radius:8px}
+.cred-form .mini-btn{align-self:flex-end}
 .stats .stat.wide{grid-column:span 2}
 
 </style>
@@ -418,6 +422,9 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
       <details class="config-block">
         <summary>Konfigurasi Merchant &amp; QRIS</summary>
         <div class="config-body">
+          <label for="adminWaInput">Nomor WhatsApp Admin (tombol bantuan)</label>
+          <input id="adminWaInput" type="tel" placeholder="08xxxxxxxxxx" />
+
           <label for="merchantNameInput">Nama Merchant</label>
           <input id="merchantNameInput" type="text" placeholder="Name Merchant" />
 
@@ -451,6 +458,7 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
             <option value="percent">Diskon %</option>
           </select>
           <input id="voucherQuota" type="number" placeholder="Kuota" min="1" value="100">
+          <input id="voucherExpiry" type="date" title="Berlaku sampai (kosong = selamanya)">
           <button class="save vsave" id="voucherSave" type="button">Buat</button>
         </div>
         <div class="voucher-list" id="voucherList"><p class="muted">Memuat voucher...</p></div>
@@ -464,6 +472,7 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
           <button class="chip" data-filter="claimed">Dibayar</button>
           <button class="chip" data-filter="confirmed">Terkonfirmasi</button>
           <button class="chip" data-filter="expired">Berakhir</button>
+          <button class="chip" data-filter="cancelled">Dibatalkan</button>
         </div>
         <div class="tool-row">
           <button class="export-btn" id="exportBtn" type="button">↓ Export CSV</button>
@@ -519,6 +528,14 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
       <div class="receipt-row" id="receiptDiscountRow" style="display:none">
         <span class="label">Diskon</span>
         <span class="value" id="receiptDiscount">-</span>
+      </div>
+      <div class="receipt-row" id="receiptSsidRow" style="display:none">
+        <span class="label">SSID</span>
+        <span class="value" id="receiptSsid">-</span>
+      </div>
+      <div class="receipt-row" id="receiptPassRow" style="display:none">
+        <span class="label">Password</span>
+        <span class="value" id="receiptPass">-</span>
       </div>
       <div class="receipt-row">
         <span class="label">Waktu</span>
@@ -588,6 +605,7 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
   const SESSION_KEY = 'qris_admin_discord_token';
   let txnUnsub = null;
   let adminPollTimer = null;
+  let adminWaNumber = '';
 
   // ---------- notifikasi transaksi baru masuk ----------
   let audioCtx = null;
@@ -738,6 +756,11 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
         document.getElementById('merchantNameInput').value = data.merchantName || '';
         document.getElementById('staticQrisInput').value = data.staticQris || '';
       }
+      const waDoc = await db.collection('config').doc('wa').get();
+      if (waDoc.exists){
+        adminWaNumber = String((waDoc.data().number || '').replace(/\D/g, ''));
+        document.getElementById('adminWaInput').value = waDoc.data().number || '';
+      }
     }catch(err){
       console.error('Gagal load config:', err);
     }
@@ -751,6 +774,12 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
       await db.collection('config').doc('qris').set({
         merchantName: document.getElementById('merchantNameInput').value.trim(),
         staticQris: document.getElementById('staticQrisInput').value.trim(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      const waRaw = document.getElementById('adminWaInput').value.trim();
+      adminWaNumber = String(waRaw.replace(/\D/g, ''));
+      await db.collection('config').doc('wa').set({
+        number: waRaw,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
       statusEl.className = 'status ok';
@@ -831,8 +860,8 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
 
     list.innerHTML = docs.map((doc) => {
       const t = doc.data();
-      const badgeClass = t.status === 'expired' ? 'badge--expired' : (t.status === 'confirmed' ? 'badge--confirmed' : (t.status === 'claimed' ? 'badge--claimed' : 'badge--pending'));
-      const badgeText  = t.status === 'expired' ? 'Selesai' : (t.status === 'confirmed' ? 'Terkonfirmasi' : (t.status === 'claimed' ? 'Telah Dibayar Oleh User' : 'Menunggu'));
+      const badgeClass = t.status === 'expired' ? 'badge--expired' : (t.status === 'cancelled' ? 'badge--cancelled' : (t.status === 'confirmed' ? 'badge--confirmed' : (t.status === 'claimed' ? 'badge--claimed' : 'badge--pending')));
+      const badgeText  = t.status === 'expired' ? 'Selesai' : (t.status === 'cancelled' ? 'Dibatalkan' : (t.status === 'confirmed' ? 'Terkonfirmasi' : (t.status === 'claimed' ? 'Telah Dibayar Oleh User' : 'Menunggu')));
       const txnIdText = t.transactionId ? escapeHtml(t.transactionId) : '—';
       const rowClass = newlyArrivedIds.includes(doc.id) ? 'txn-item new-txn' : 'txn-item';
       const extLine = t.type === 'extension'
@@ -842,7 +871,7 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
       const waText = encodeURIComponent(teksWa(t));
       const wifiLine = t.service === 'wifi'
         ? `<div class="txn-wifi">📶 WiFi — WA: ${escapeHtml(t.whatsapp || t.deviceName || '-')} · ${escapeHtml(String(t.hours ?? '-'))} jam</div>` +
-          (waDigits ? `<div style="margin-top:4px"><a href="https://wa.me/${waDigits}?text=${waText}" target="_blank" rel="noopener" style="font-size:11.5px;font-weight:700;color:var(--teal)">Kirim SSID &amp; Password via WA ↗</a></div>` : '') +
+          (adminWaNumber ? `<div style="margin-top:4px"><a href="https://wa.me/${adminWaNumber}?text=${waText}" target="_blank" rel="noopener" style="font-size:11.5px;font-weight:700;color:var(--teal)">Chat admin (bantuan) ↗</a></div>` : '') +
           `<div style="margin-top:2px"><button type="button" class="struk-btn" data-struk-id="${doc.id}" style="font-size:11.5px;font-weight:700;color:var(--teal);background:none;border:none;padding:0;cursor:pointer;font-family:inherit">🖼️ Gambar Struk — Salin</button></div>`
         : '';
 
@@ -854,9 +883,11 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
             <span class="muted" style="font-size:11px;">oleh ${t.confirmedBy ? 'admin' : '-'}</span>
             ${t.type === 'extension'
               ? `<span class="muted" style="font-size:11px;font-weight:700">⟳ Otomatis</span>`
-              : (mulai
-                ? `<span class="start-countdown" data-started-at="${mulai.getTime()}" data-hours="${escapeHtml(String(t.hours ?? 0))}">⏱ ${formatSisa(mulai, t.hours)}</span>`
-                : `<button type="button" class="start-btn" data-start-id="${doc.id}">▶ Mulai Sewa</button>`)}
+              : `<div class="cred-form">
+                  <input data-cred-ssid="${doc.id}" placeholder="SSID" value="${escapeHtml((t.credentials && t.credentials.ssid) || 'R STUDIO LABS')}">
+                  <input data-cred-pass="${doc.id}" placeholder="Password" value="${escapeHtml((t.credentials && t.credentials.password) || '')}">
+                  <button type="button" class="mini-btn" data-save-cred="${doc.id}">${t.credentials ? 'Update' : 'Simpan &amp; Mulai'}</button>
+                 </div>`}
             ${mulai && t.status !== 'expired' ? `<button type="button" class="mini-btn" data-selesai-id="${doc.id}">Selesai</button>` : ''}
             <button type="button" class="print-btn" data-print-id="${doc.id}" title="Cetak struk">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
@@ -898,8 +929,33 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
         if (txnData) salinStruk(txnData, btn);
       });
     });
-    list.querySelectorAll('.start-btn').forEach((btn) => {
-      btn.addEventListener('click', () => startSewa(btn.dataset.startId, adminUsername, btn));
+    list.querySelectorAll('[data-save-cred]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.saveCred;
+        const ssidInput = list.querySelector('[data-cred-ssid="' + id + '"]');
+        const passInput = list.querySelector('[data-cred-pass="' + id + '"]');
+        const ssid = ssidInput ? ssidInput.value.trim() : '';
+        const pass = passInput ? passInput.value.trim() : '';
+        if (!ssid){ alert('SSID wajib diisi.'); return; }
+        btn.disabled = true; btn.textContent = '...';
+        try{
+          const upd = {
+            credentials: { ssid: ssid, password: pass },
+            credentialSetAt: firebase.firestore.FieldValue.serverTimestamp()
+          };
+          const cur = txnCache.get(id);
+          if (!cur || !cur.startedAt){
+            upd.startedAt = firebase.firestore.FieldValue.serverTimestamp();
+            upd.startedBy = adminUsername || 'admin';
+          }
+          await db.collection('transactions').doc(id).update(upd);
+          btn.textContent = '✓ Tersimpan';
+        }catch(err){
+          console.error(err);
+          alert('Gagal menyimpan kredensial.');
+          btn.disabled = false; btn.textContent = 'Simpan & Mulai';
+        }
+      });
     });
     list.querySelectorAll('[data-selesai-id]').forEach((btn) => {
       btn.addEventListener('click', () => tandaiSelesai(btn.dataset.selesaiId, btn));
@@ -1150,7 +1206,8 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
       if (!items.length){ box.innerHTML = '<p class="muted">Belum ada voucher.</p>'; return; }
       box.innerHTML = items.map((v) => {
         const value = v.type === 'percent' ? v.value + '%' : 'Rp ' + formatRp(v.value);
-        const status = v.active === false ? 'nonaktif' : 'aktif';
+        const expired = v.expiresAt && new Date(String(v.expiresAt).length === 10 ? v.expiresAt + 'T23:59:59' : v.expiresAt) < new Date();
+        const status = expired ? 'kedaluwarsa' : (v.active === false ? 'nonaktif' : 'aktif');
         return '<div class="voucher-item"><div><div class="vcode">' + escapeHtml(v.code || v.id) + '</div>' +
           '<div class="vmeta">' + value + ' · ' + (v.used || 0) + '/' + (v.quota || '-') + ' · ' + status + '</div></div>' +
           '<div class="vact"><button class="mini-btn" data-vtoggle="' + escapeHtml(v.id) + '" data-vactive="' + (v.active !== false) + '">' +
@@ -1184,11 +1241,13 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
     const value = Number(document.getElementById('voucherValue').value);
     const quota = Number(document.getElementById('voucherQuota').value) || 100;
     const type = document.getElementById('voucherType').value;
+    const expiresAt = document.getElementById('voucherExpiry').value;
     if (!code || !(value > 0)){ alert('Kode dan nilai voucher wajib diisi.'); return; }
     btn.disabled = true; btn.textContent = '...';
     try{
       await db.collection('vouchers').doc(code).set({
         code: code, type: type, value: value, quota: quota, used: 0, active: true,
+        expiresAt: expiresAt || null,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
       document.getElementById('voucherCode').value = '';
@@ -1264,7 +1323,7 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
   const receiptHours         = document.getElementById('receiptHours');
 
   function teksWa(t){
-    return 'Halo, pembayaran Sewa WiFi R STUDIO LABS kamu sudah terkonfirmasi.\nID Transaksi: ' + (t.transactionId || '-') + ' (' + (t.hours ?? '-') + ' jam, Rp ' + formatRp(t.amount) + ')\nSSID: R STUDIO LABS\nPassword: \nCatatan: Durasi dimulai ketika admin menekan tombol "Mulai Sewa" di panel admin setelah pesan ini dikirim.\nTerima kasih!';
+    return 'Halo, saya butuh bantuan terkait pesanan WiFi R STUDIO LABS.\nID Transaksi: ' + (t.transactionId || '-') + ' (' + (t.hours ?? '-') + ' jam, Rp ' + formatRp(t.amount) + ')\nMohon bantuannya, terima kasih.';
   }
 
   function gambarStrukBlob(t){
@@ -1376,6 +1435,16 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
     receiptMerchant.textContent = t.merchantName || '-';
     receiptConfirmedBy.textContent = t.confirmedBy ? 'admin' : '-';
     receiptTxnId.textContent = t.transactionId || '-';
+    const c = t.credentials;
+    if (c){
+      document.getElementById('receiptSsidRow').style.display = '';
+      document.getElementById('receiptPassRow').style.display = '';
+      document.getElementById('receiptSsid').textContent = c.ssid || '-';
+      document.getElementById('receiptPass').textContent = c.password || '-';
+    } else {
+      document.getElementById('receiptSsidRow').style.display = 'none';
+      document.getElementById('receiptPassRow').style.display = 'none';
+    }
     const discRow = document.getElementById('receiptDiscountRow');
     if (discRow){
       discRow.style.display = t.discount > 0 ? '' : 'none';

@@ -40,6 +40,17 @@
 .history-item .hbadge.confirmed{background:var(--teal-soft);color:var(--teal)}
 .history-item .hbadge.claimed{background:var(--amber-soft);color:var(--amber-ink)}
 .share-result{margin-top:12px}
+.cred-box{background:var(--signal-soft);border:1.5px dashed var(--signal);border-radius:15px;padding:14px;margin-top:14px;text-align:left}
+.cred-box[hidden]{display:none}
+.cred-title{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:800;color:var(--signal-deep);margin-bottom:8px;text-align:center}
+.cred-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px dashed var(--line)}
+.cred-row:last-child{border-bottom:0}
+.cred-row span{font-size:11px;color:var(--muted);font-weight:700;flex-shrink:0}
+.cred-row b{font-family:var(--mono);font-size:14px;font-weight:800;word-break:break-all;flex:1}
+.cred-copy{font:inherit;font-size:11px;font-weight:800;color:var(--signal-deep);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:5px 9px;cursor:pointer;white-space:nowrap}
+.help-line{font-size:11.5px;color:var(--muted);text-align:center;margin-top:12px;line-height:1.6}
+.help-line[hidden]{display:none}
+.help-line a{color:var(--signal-deep);font-weight:800;text-decoration:none;border-bottom:1px solid rgba(14,165,183,.35)}
 .ext-note{font-size:12px;font-weight:800;color:var(--teal);text-align:center;margin-top:10px;line-height:1.5}
 .ext-note[hidden]{display:none}
 
@@ -85,8 +96,14 @@
         <div><span>Waktu Pesan</span><b id="rTime">-</b></div>
       </div>
       <div class="timeline" id="rTimeline"></div>
+      <div class="cred-box" id="rCredBox" hidden>
+        <div class="cred-title">Kredensial WiFi kamu</div>
+        <div class="cred-row"><span>SSID</span><b id="rCredSsid">-</b><button class="cred-copy" data-copy="rCredSsid" type="button">Salin</button></div>
+        <div class="cred-row"><span>Password</span><b id="rCredPass">-</b><button class="cred-copy" data-copy="rCredPass" type="button">Salin</button></div>
+      </div>
       <p class="result-expiry" id="rExpiry"></p>
       <p class="ext-note" id="rExtNote" hidden></p>
+      <p class="help-line" id="rHelpLine" hidden>Butuh bantuan? WhatsApp admin: <a id="rAdminWaLink" href="#" target="_blank" rel="noopener">••••<span id="rAdminWaTail"></span></a></p>
       <div class="progress" id="rProgress" hidden><i></i></div>
       <div class="history-list" id="historyList" hidden></div>
       <button class="btn ghost" id="copyBtn" type="button" style="margin-top:12px">Salin ID Transaksi</button>
@@ -245,10 +262,17 @@
     if (cur) data = cur;
     clearInterval(expiryTimer);
     currentId = data.transactionId || "-";
-    var label = data.status === "expired" ? "Selesai" : (data.status === "confirmed" ? "Terkonfirmasi" : (data.status === "claimed" ? "Menunggu konfirmasi" : "Menunggu pembayaran"));
+    var label = data.status === "expired" ? "Selesai" : (data.status === "cancelled" ? "Dibatalkan" : (data.status === "confirmed" ? "Terkonfirmasi" : (data.status === "claimed" ? "Menunggu konfirmasi" : "Menunggu pembayaran")));
     var cls = (data.status === "confirmed" || data.status === "expired") ? "confirmed" : (data.status === "claimed" ? "claimed" : "");
     statusEl.className = "badge-status " + cls;
     statusEl.textContent = label;
+    var cred = data && data.credentials;
+    var credBox = document.getElementById('rCredBox');
+    if (cred && cred.ssid){
+      document.getElementById('rCredSsid').textContent = cred.ssid;
+      document.getElementById('rCredPass').textContent = cred.password || '-';
+      credBox.hidden = false;
+    } else credBox.hidden = true;
     document.getElementById("rId").textContent = currentId;
     document.getElementById("rHours").textContent = (data.hours || "-") + " jam";
     document.getElementById("rTotal").textContent = rp((Number(data.amount) || 0) + (data._extAmount || 0));
@@ -265,6 +289,29 @@
     else expiryEl.textContent = "📲 Scan QRIS pada halaman pembayaran, lalu tekan tombol Saya Sudah Bayar.";
     resultEl.hidden = false;
     if (!autoRefreshing) resultEl.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  function loadAdminWa(){
+    if (!db) return;
+    db.collection('config').doc('wa').get().then(function(doc){
+      if (!doc.exists) return;
+      var wa = String((doc.data().number || '').replace(/\D/g, ''));
+      if (wa.length < 8) return;
+      var el = document.getElementById('rHelpLine');
+      el.querySelector('a').href = 'https://wa.me/' + wa;
+      el.querySelector('span').textContent = wa.slice(-4);
+      el.hidden = false;
+    }).catch(function(){});
+  }
+  document.querySelectorAll('[data-copy]').forEach(function(b){
+    b.addEventListener('click', function(){
+      var text = document.getElementById(b.dataset.copy).textContent;
+      if (navigator.clipboard) navigator.clipboard.writeText(text).then(function(){ toast('Tersalin.'); }).catch(function(){ toast(text); });
+      else toast(text);
+    });
+  });
+  if ('Notification' in window && Notification.permission === 'default'){
+    // izin diminta saat pengguna menekan tombol cek (user gesture)
   }
 
   function findBy(field, value) {
@@ -368,6 +415,8 @@
     else if (navigator.clipboard) navigator.clipboard.writeText(url).then(function(){ toast('Tautan status tersalin.'); }).catch(function(){ toast(url); });
     else toast(url);
   });
+
+  loadAdminWa();
 
   var params = new URLSearchParams(location.search);
   var preset = params.get("id") || params.get("wa");
