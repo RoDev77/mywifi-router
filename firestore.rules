@@ -16,14 +16,14 @@ service cloud.firestore {
       allow read, create, update: if true;
     }
 
-    // Voucher/kode promo.
+    // Voucher/kode promo (panel admin perlu create/update/delete).
     match /vouchers/{doc} {
-      allow read, create, update: if true;
+      allow read, create, update, delete: if true;
     }
 
     // Catatan pemakaian voucher: 1 kali per nomor WhatsApp.
     match /voucherUses/{doc} {
-      allow read, create: if true;
+      allow read, create, delete: if true;
     }
 
     // Daftar admin (dibaca saat pengecekan role Discord).

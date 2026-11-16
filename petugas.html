@@ -1142,9 +1142,18 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
         catch(err){ console.error(err); }
       }));
       box.querySelectorAll('[data-vdelete]').forEach((b) => b.addEventListener('click', async () => {
-        if (!confirm('Hapus voucher ini?')) return;
-        try{ await db.collection('vouchers').doc(b.dataset.vdelete).delete(); }
-        catch(err){ console.error(err); }
+        if (!confirm('Hapus voucher ' + b.dataset.vdelete + '?')) return;
+        b.disabled = true;
+        b.textContent = '...';
+        try{
+          await db.collection('vouchers').doc(b.dataset.vdelete).delete();
+          b.textContent = '✓';
+        }catch(err){
+          console.error(err);
+          alert('Gagal menghapus voucher. Cek aturan Firestore (delete voucher harus diizinkan).');
+          b.disabled = false;
+          b.textContent = 'Hapus';
+        }
       }));
     }, (err) => { box.innerHTML = '<p class="muted">Gagal memuat voucher (cek Firestore Rules).</p>'; console.error(err); });
   }
