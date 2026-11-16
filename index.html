@@ -417,7 +417,28 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
 .help-line[hidden]{display:none}
 .help-line a{color:var(--signal-deep);font-weight:800;text-decoration:none;border-bottom:1px solid rgba(14,165,183,.35)}
 .notif-btn{margin-top:10px;font-size:13px !important}
+
+.method-row{display:flex;gap:8px;margin-bottom:12px}
+.method-chip{flex:1;font:inherit;font-size:13px;font-weight:800;padding:11px 8px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer;transition:background .14s ease,border-color .14s ease}
+.method-chip.on{border-color:var(--signal);background:var(--signal-soft);color:var(--signal-deep)}
+.crypto-view{display:none;margin-top:16px}
+.crypto-view.show{display:block;animation:fadeUp .3s ease both}
+.chain-row{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.chain-chip{font:inherit;font-size:11px;font-weight:800;padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer}
+.chain-chip.on{background:var(--signal);border-color:var(--signal);color:#fff}
+.crypto-box{background:var(--surface);border:1.5px dashed var(--line);border-radius:15px;padding:14px}
+.crypto-line{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px}
+.crypto-line span{font-size:11px;color:var(--muted);font-weight:700;flex-shrink:0}
+.crypto-line b{font-family:var(--mono);font-size:12px;font-weight:800;word-break:break-all;text-align:right}
+.hash-input{width:100%;font:inherit;font-size:13px;padding:12px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);outline:none}
+.hash-input:focus{outline:none;border-color:var(--signal);box-shadow:0 0 0 3px rgba(14,165,183,.15)}
+.verify-btn{width:100%;font:inherit;font-weight:800;font-size:14px;padding:13px;border-radius:13px;cursor:pointer;margin-top:10px;color:#fff;border:1px solid rgba(255,255,255,.16);background:linear-gradient(135deg,#0c94a8,#082c36)}
+.verify-btn:disabled{opacity:.6;cursor:wait}
+.crypto-status{font-size:12px;line-height:1.6;margin-top:10px;font-weight:700;color:var(--muted)}
+.crypto-status.ok{color:var(--teal)}
+.crypto-status.err{color:var(--red)}
 </style>
+<script src="crypto-verify.js"></script>
 <script src="pwa.js" defer></script>
 </head>
 <body>
@@ -554,8 +575,13 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
     <p class="fee-note">* Biaya layanan digunakan untuk meningkatkan layanan agar lebih baik lagi.</p>
 
     <div id="inputView">
+      <div class="method-row">
+        <button class="method-chip on" data-method="qris" type="button">QRIS</button>
+        <button class="method-chip" data-method="crypto" type="button">Crypto USDT/USDC</button>
+      </div>
       <button class="pay" id="pay">Bayar Sekarang</button>
-      <p class="merchant-note">Pembayaran hanya via <b>QRIS</b> (semua e-wallet &amp; m-banking).<br>Nama merchant yang muncul saat scan: <b id="merchantNameEl">…</b><br>Kami tidak menerima tunai / bayar di tempat.</p>
+      <p class="merchant-note" id="qrisNote">Pembayaran via <b>QRIS</b> (semua e-wallet &amp; m-banking).<br>Nama merchant saat scan: <b id="merchantNameEl">…</b><br>Kami tidak menerima tunai / bayar di tempat.</p>
+      <p class="merchant-note" id="cryptoNote" style="display:none">Pembayaran via <b>USDT / USDC</b>. Pilih jaringan, transfer nominal yang tertera, lalu masukkan TxHash untuk verifikasi otomatis.</p>
     </div>
 
     <div class="qrview" id="qrView">
@@ -571,6 +597,29 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
       <a href="#" id="downloadLink" class="download-link">Unduh gambar QR</a>
       <button class="cancel-btn" id="cancelBtn" type="button">Batalkan pesanan ini</button>
       <button class="secondary" id="newTxnBtn">Transaksi Baru</button>
+    </div>
+
+    <div class="crypto-view" id="cryptoView">
+      <p class="qr-total-label">Total Pembayaran</p>
+      <p class="qr-total" id="cryptoAmount">0</p>
+      <p class="qr-caption" id="cryptoCaption">USDT / USDC — jaringan <b id="cryptoChainLabel">-</b></p>
+      <div class="chain-row" id="chainRow">
+        <button class="chain-chip on" data-chain="bnb" type="button">BNB</button>
+        <button class="chain-chip" data-chain="tron" type="button">TRON</button>
+        <button class="chain-chip" data-chain="eth" type="button">ETH</button>
+        <button class="chain-chip" data-chain="plasma" type="button">Plasma</button>
+        <button class="chain-chip" data-chain="sol" type="button">Solana</button>
+      </div>
+      <div class="crypto-box">
+        <div class="crypto-line"><span>Alamat tujuan</span><b id="cryptoAddress">-</b></div>
+        <div class="crypto-line"><span>ID Transaksi</span><b id="cryptoExpectedId">-</b></div>
+        <p class="txn-line">Setelah transfer, masukkan TxHash di bawah. Sistem akan memeriksa alamat penerima dan nominalnya otomatis.</p>
+        <input class="hash-input" id="txHashInput" type="text" autocomplete="off" placeholder="Tempel TxHash transaksi crypto">
+        <button class="verify-btn" id="verifyBtn" type="button">Verifikasi &amp; Konfirmasi</button>
+        <p class="crypto-status" id="cryptoStatus">Menunggu transfer…</p>
+      </div>
+      <button class="cancel-btn" id="cryptoCancelBtn" type="button">Batalkan pesanan ini</button>
+      <button class="secondary" id="cryptoNewBtn" type="button">Transaksi Baru</button>
     </div>
 
     <div class="success" id="successView">
@@ -653,6 +702,13 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
         if (d.staticQris) activeConfig.staticQris = d.staticQris;
       }
     }).catch(function (e) { console.error("Gagal ambil config dari Firestore:", e); });
+    db.collection("config").doc("crypto").get().then(function (doc) {
+      if (!doc.exists) return;
+      var d = doc.data();
+      Object.keys(CRYPTO_DEFAULTS).forEach(function (k) { if (d[k]) cryptoConfig[k] = d[k]; });
+      if (Number(d.rate) > 0) cryptoConfig.rate = Number(d.rate);
+      renderCrypto();
+    }).catch(function (e) { console.error("Gagal ambil config crypto:", e); });
   } catch (e) {
     console.error("Firebase init gagal, pakai fallback lokal:", e);
   }
@@ -710,6 +766,7 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
   var inputView = document.getElementById("inputView");
   var qrView = document.getElementById("qrView");
   var qrFrame = document.getElementById("qrFrame");
+  var cryptoView = document.getElementById("cryptoView");
   var qrTotal = document.getElementById("qrTotal");
   var txnIdEl = document.getElementById("txnIdEl");
   var statusEl = document.getElementById("statusEl");
@@ -720,6 +777,27 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
   var currentTxnId = null, currentTxnCode = null, unsubscribeTxn = null, currentWa = "";
   var extensionOf = null, voucher = null, voucherWa = "", extendHours = 1;
   var notifTxn = null, adminWa = "";
+  var payMethod = "qris", cryptoChain = "bnb";
+  var CRYPTO_DEFAULTS = {
+    rate: 16000,
+    bnb: "0xB4863845a30bC272Fb2164A5A7bE41eE48397f85",
+    tron: "TSB6QoQAWn6tZBksZdeXT3MDRqC8sKEQEZ",
+    eth: "0xB4863845a30bC272Fb2164A5A7bE41eE48397f85",
+    plasma: "0xB4863845a30bC272Fb2164A5A7bE41eE48397f85",
+    sol: "C17iQSAmotXYgboMTudzcU8cme5pbgnc8jUf2eWg8GdU"
+  };
+  var cryptoConfig = Object.assign({}, CRYPTO_DEFAULTS);
+  var CHAIN_LABELS = { bnb: "BNB Smart Chain", tron: "Tron (TRC20)", eth: "Ethereum", plasma: "Plasma", sol: "Solana" };
+  function cryptoExpected(){
+    var rate = Number(cryptoConfig.rate) || 16000;
+    return Math.round((total() / rate) * 1000000) / 1000000;
+  }
+  function renderCrypto(){
+    document.getElementById("cryptoAddress").textContent = cryptoConfig[cryptoChain] || "-";
+    document.getElementById("cryptoAmount").textContent = cryptoExpected().toFixed(6);
+    document.getElementById("cryptoChainLabel").textContent = CHAIN_LABELS[cryptoChain] || cryptoChain;
+    document.getElementById("txnIdEl").textContent = currentTxnCode || "-";
+  }
 
   function rp(n) { return "Rp" + n.toLocaleString("id-ID"); }
   function subtotal() { return hours * HARGA; }
@@ -757,6 +835,7 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
     if (vm) { vm.textContent = ""; vm.className = "voucher-msg"; }
     try { localStorage.removeItem("rsl_active_txn"); } catch (e) {}
     qrView.classList.remove("show");
+    cryptoView.classList.remove("show");
     successView.classList.remove("show");
     if (showInput !== false) inputView.style.display = "";
   }
@@ -968,6 +1047,13 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
         whatsapp: currentWa,
         hours: hours,
         type: extensionOf ? "extension" : "wifi",
+        paymentMethod: payMethod,
+        ...(payMethod === "crypto" ? {
+          chain: cryptoChain,
+          walletAddress: cryptoConfig[cryptoChain],
+          expectedCrypto: cryptoExpected(),
+          rate: Number(cryptoConfig.rate) || 16000
+        } : {}),
         ...(extensionOf ? { extensionOf: extensionOf } : {}),
         ...(voucher ? { voucher: voucher.code, discount: voucher.amount } : {})
       });
@@ -1001,8 +1087,21 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
 
     inputView.style.display = "none";
     successView.classList.remove("show");
-    qrView.classList.add("show");
-    qrView.scrollIntoView({ behavior: "smooth", block: "center" });
+    qrView.classList.remove("show");
+    cryptoView.classList.remove("show");
+    if (payMethod === "crypto"){
+      document.getElementById("cryptoExpectedId").textContent = currentTxnCode || "-";
+      setTimeout(function(){
+        document.getElementById("cryptoStatus").textContent = "Menunggu transfer " + (CHAIN_LABELS[cryptoChain] || cryptoChain) + "…";
+        document.getElementById("cryptoStatus").className = "crypto-status";
+        document.getElementById("txHashInput").value = "";
+      }, 50);
+      cryptoView.classList.add("show");
+      cryptoView.scrollIntoView({ behavior: "smooth", block: "center" });
+    } else {
+      qrView.classList.add("show");
+      qrView.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
     payBtn.disabled = false;
     payBtn.textContent = "Bayar Sekarang";
   });
@@ -1109,6 +1208,60 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
     b.addEventListener("click", function(){
       copyText(document.getElementById(b.dataset.copy).textContent, "Tersalin.");
     });
+  });
+
+  document.querySelectorAll(".method-chip").forEach(function(chip){
+    chip.addEventListener("click", function(){
+      payMethod = chip.dataset.method;
+      document.querySelectorAll(".method-chip").forEach(function(c){ c.classList.toggle("on", c === chip); });
+      document.getElementById("qrisNote").style.display = payMethod === "qris" ? "" : "none";
+      document.getElementById("cryptoNote").style.display = payMethod === "crypto" ? "" : "none";
+      render();
+    });
+  });
+  document.getElementById("chainRow").addEventListener("click", function(e){
+    var chip = e.target.closest(".chain-chip");
+    if (!chip) return;
+    cryptoChain = chip.dataset.chain;
+    document.querySelectorAll(".chain-chip").forEach(function(c){ c.classList.toggle("on", c === chip); });
+    renderCrypto();
+  });
+  document.getElementById("verifyBtn").addEventListener("click", function(){
+    if (!currentTxnId || !db){ toast("Tidak ada transaksi aktif."); return; }
+    var hash = document.getElementById("txHashInput").value.trim();
+    if (!hash){ toast("Masukkan TxHash dulu."); return; }
+    var btn = this;
+    btn.disabled = true; btn.textContent = "Memeriksa…";
+    var statusEl = document.getElementById("cryptoStatus");
+    statusEl.className = "crypto-status";
+    statusEl.textContent = "Memverifikasi transaksi di jaringan…";
+    CryptoVerify.verify(cryptoChain, hash, cryptoExpected(), cryptoConfig[cryptoChain])
+      .then(function(res){
+        statusEl.textContent = res.message;
+        statusEl.className = "crypto-status " + (res.ok ? "ok" : "err");
+        if (res.ok){
+          db.collection("transactions").doc(currentTxnId).update({
+            status: "confirmed",
+            confirmedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            confirmedBy: "system",
+            paymentMethod: "crypto",
+            chain: cryptoChain,
+            txHash: hash,
+            cryptoAmount: res.amount,
+            token: res.token,
+            verifiedAt: firebase.firestore.FieldValue.serverTimestamp()
+          }).catch(function(e){ console.error(e); toast("Terverifikasi, tapi gagal menyimpan status. Hubungi admin."); });
+        }
+      }).catch(function(e){
+        statusEl.textContent = "Gagal memverifikasi: " + e.message;
+        statusEl.className = "crypto-status err";
+      }).finally(function(){ btn.disabled = false; btn.textContent = "Verifikasi & Konfirmasi"; });
+  });
+  document.getElementById("cryptoCancelBtn").addEventListener("click", function(){
+    document.getElementById("cancelBtn").click();
+  });
+  document.getElementById("cryptoNewBtn").addEventListener("click", function(){
+    document.getElementById("newTxnBtn").click();
   });
 
   document.getElementById("copyTxnBtn").addEventListener("click", function(){
@@ -1236,7 +1389,7 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
   function saveSession(){
     try {
       if (currentTxnId) localStorage.setItem(SESSION_TXN_KEY, JSON.stringify({
-        id: currentTxnId, code: currentTxnCode, wa: currentWa, hours: hours, total: total()
+        id: currentTxnId, code: currentTxnCode, wa: currentWa, hours: hours, total: total(), method: payMethod, chain: cryptoChain
       }));
       else localStorage.removeItem(SESSION_TXN_KEY);
     } catch (e) {}
@@ -1270,7 +1423,12 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
     setStatus("pending", "Memulihkan pesanan sebelumnya…");
     inputView.style.display = "none";
     successView.classList.remove("show");
-    qrView.classList.add("show");
+    qrView.classList.remove("show");
+    if (s.method === "crypto"){
+      cryptoChain = s.chain || "bnb";
+      renderCrypto();
+      cryptoView.classList.add("show");
+    } else qrView.classList.add("show");
     subscribeToTxn(currentTxnId);
   }
 

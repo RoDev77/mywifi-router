@@ -350,6 +350,10 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
 .cred-form{display:flex;flex-direction:column;gap:5px;margin-top:7px;align-items:flex-end}
 .cred-form input{width:150px;font-size:11px;padding:7px 8px;border-radius:8px}
 .cred-form .mini-btn{align-self:flex-end}
+.crypto-config{display:grid;gap:7px;margin-top:8px}
+.crypto-config input{font-size:11px}
+.txn-crypto{font-size:11px;color:var(--signal-deep);font-weight:800;margin-top:4px;word-break:break-all}
+.txn-crypto a{color:var(--signal-deep)}
 .stats .stat.wide{grid-column:span 2}
 
 </style>
@@ -422,6 +426,16 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
       <details class="config-block">
         <summary>Konfigurasi Merchant &amp; QRIS</summary>
         <div class="config-body">
+          <div class="vtitle" style="margin-bottom:8px">Pembayaran Crypto (USDT/USDC)</div>
+          <div class="crypto-config">
+            <input id="cryptoRate" type="number" min="1" placeholder="Kurs 1 USDT = Rp (mis. 16000)">
+            <input id="cryptoBnb" type="text" placeholder="Alamat BNB">
+            <input id="cryptoQron" type="text" placeholder="Alamat TRON">
+            <input id="cryptoEth" type="text" placeholder="Alamat ETH">
+            <input id="cryptoPlasma" type="text" placeholder="Alamat Plasma">
+            <input id="cryptoSol" type="text" placeholder="Alamat Solana">
+          </div>
+
           <label for="adminWaInput">Nomor WhatsApp Admin (tombol bantuan)</label>
           <input id="adminWaInput" type="tel" placeholder="08xxxxxxxxxx" />
 
@@ -756,6 +770,16 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
         document.getElementById('merchantNameInput').value = data.merchantName || '';
         document.getElementById('staticQrisInput').value = data.staticQris || '';
       }
+      const crDoc = await db.collection('config').doc('crypto').get();
+      if (crDoc.exists){
+        const c = crDoc.data();
+        document.getElementById('cryptoRate').value = c.rate || '';
+        document.getElementById('cryptoBnb').value = c.bnb || '';
+        document.getElementById('cryptoQron').value = c.tron || '';
+        document.getElementById('cryptoEth').value = c.eth || '';
+        document.getElementById('cryptoPlasma').value = c.plasma || '';
+        document.getElementById('cryptoSol').value = c.sol || '';
+      }
       const waDoc = await db.collection('config').doc('wa').get();
       if (waDoc.exists){
         adminWaNumber = String((waDoc.data().number || '').replace(/\D/g, ''));
@@ -774,6 +798,15 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
       await db.collection('config').doc('qris').set({
         merchantName: document.getElementById('merchantNameInput').value.trim(),
         staticQris: document.getElementById('staticQrisInput').value.trim(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      await db.collection('config').doc('crypto').set({
+        rate: Number(document.getElementById('cryptoRate').value) || 16000,
+        bnb: document.getElementById('cryptoBnb').value.trim(),
+        tron: document.getElementById('cryptoQron').value.trim(),
+        eth: document.getElementById('cryptoEth').value.trim(),
+        plasma: document.getElementById('cryptoPlasma').value.trim(),
+        sol: document.getElementById('cryptoSol').value.trim(),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
       const waRaw = document.getElementById('adminWaInput').value.trim();
@@ -867,6 +900,9 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
       const extLine = t.type === 'extension'
         ? `<div class="txn-wifi">🔁 Perpanjangan +${escapeHtml(String(t.hours ?? '-'))} jam · induk: ${escapeHtml(t.extensionOf || '-')}</div>`
         : '';
+      const cryptoLine = t.paymentMethod === 'crypto'
+        ? `<div class="txn-crypto">💱 Crypto · ${escapeHtml(String(t.chain || '-').toUpperCase())} · ${t.cryptoAmount ? escapeHtml(String(t.cryptoAmount) + ' ' + (t.token || 'USDT')) : ''}<br>TxHash: ${t.txHash ? escapeHtml(t.txHash) : '-'}</div>`
+        : '';
       const wifiLine = t.service === 'wifi'
         ? `<div class="txn-wifi">📶 WiFi — WA: ${escapeHtml(t.whatsapp || t.deviceName || '-')} · ${escapeHtml(String(t.hours ?? '-'))} jam</div>` +
           `<div style="margin-top:2px"><button type="button" class="struk-btn" data-struk-id="${doc.id}" style="font-size:11.5px;font-weight:700;color:var(--teal);background:none;border:none;padding:0;cursor:pointer;font-family:inherit">🖼️ Gambar Struk — Salin</button></div>`
@@ -903,6 +939,7 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
             <div class="txn-id">ID: ${txnIdText}</div>
             ${wifiLine}
             ${extLine}
+            ${cryptoLine}
           </div>
           <div class="txn-side">
             <span class="badge ${badgeClass}">${badgeText}</span>
@@ -1124,12 +1161,13 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
   });
 
   document.getElementById('exportBtn').addEventListener('click', () => {
-    const rows = [['ID Transaksi', 'Status', 'WhatsApp', 'Durasi', 'Total', 'Merchant', 'Waktu']];
+    const rows = [['ID Transaksi', 'Status', 'Metode', 'Jaringan', 'TxHash', 'Jumlah Crypto', 'WhatsApp', 'Durasi', 'Total', 'Merchant', 'Waktu']];
     allTxnDocs.forEach((d) => {
       const t = d.data();
       const waktu = t.createdAt && typeof t.createdAt.toDate === 'function'
         ? t.createdAt.toDate().toLocaleString('id-ID') : '';
-      rows.push([t.transactionId || '', t.status || '', t.whatsapp || '', String(t.hours ?? ''),
+      rows.push([t.transactionId || '', t.status || '', t.paymentMethod || 'qris', t.chain || '',
+        t.txHash || '', String(t.cryptoAmount ?? ''), t.whatsapp || '', String(t.hours ?? ''),
         String(t.amount ?? ''), t.merchantName || '', waktu]);
     });
     const csv = '\uFEFF' + rows.map((r) => r.map((v) => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\r\n');

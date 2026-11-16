@@ -46,6 +46,22 @@ di-cache. Tombol pasang muncul otomatis saat browser mendukung prompt install.
 - `vouchers/{KODE}` — `code`, `type` (`fixed`/`percent`), `value`, `quota`,
   `used`, `active`, `createdAt`.
 
+## Pembayaran Crypto
+
+`index.html` menyediakan metode **QRIS** dan **Crypto (USDT/USDC)**. Alamat
+penerima untuk BNB, TRON, Ethereum, Plasma, dan Solana serta **kurs 1 USDT/USDC
+dalam Rupiah** diatur dari panel admin (`petugas.html` → Konfigurasi
+Merchant & QRIS → bagian Pembayaran Crypto). Nominal crypto dihitung dari
+total tagihan ÷ kurs, dibulatkan 6 desimal.
+
+`crypto-verify.js` memverifikasi TxHash memakai RPC publik (BNB/ETH/Plasma via
+`eth_getTransactionReceipt` + decoding log Transfer, TRON via TronGrid, Solana
+via `getTransaction`). Verifikasi lolos hanya bila **alamat penerima cocok**,
+**token USDT/USDC**, dan **nominal sesuai (toleransi 1%)** — lalu status
+transaksi otomatis menjadi `confirmed`. Jika RPC gagal/dibatasi, status tetap
+`pending` dan admin bisa mengonfirmasi manual. Verifikasi dilakukan di browser,
+jadi untuk produksi skala besar sebaiknya dipindahkan ke backend/Cloud Function.
+
 ## Firebase
 
 Proyek aktif: **`sewa-wifi-78784`** (config ada di `index.html`, `petugas.html`,
