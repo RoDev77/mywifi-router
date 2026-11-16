@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-512.png">
 <meta name="theme-color" content="#0ea5b7">
 <title>Cek Status Pesanan — R STUDIO LABS</title>
 <meta name="description" content="Cek status pembayaran dan sisa waktu sewa WiFi R STUDIO LABS hanya dengan ID transaksi atau nomor WhatsApp.">
@@ -16,6 +18,30 @@
 (function(){try{var t=localStorage.getItem('rsl_theme');if(!t)t=(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();
 </script>
 <link rel="stylesheet" href="styles.css">
+<script src="pwa.js" defer></script>
+<style>
+
+.progress{height:8px;border-radius:99px;background:var(--soft);overflow:hidden;margin:12px 0 2px;box-shadow:inset 0 1px 2px rgba(8,44,54,.08)}
+.progress[hidden]{display:none}
+.progress i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,var(--teal),var(--signal));transition:width .5s linear,background .3s ease}
+.progress.warn i{background:linear-gradient(90deg,var(--amber),#f97316)}
+.progress.danger i{background:linear-gradient(90deg,#f97316,var(--red))}
+.history-list{display:grid;gap:8px;margin-top:14px}
+.history-list[hidden]{display:none}
+.history-item{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;
+  background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:12px 13px;cursor:pointer;color:var(--ink);
+  font:inherit;transition:transform .14s ease,border-color .14s ease;
+}
+.history-item:hover{transform:translateY(-2px);border-color:var(--signal)}
+.history-item .hid{font-family:var(--mono);font-size:12px;font-weight:800}
+.history-item .hsub{font-size:11px;color:var(--muted);margin-top:3px}
+.history-item .hbadge{font-size:10.5px;font-weight:800;padding:4px 9px;border-radius:999px;background:var(--soft);color:var(--muted);white-space:nowrap}
+.history-item .hbadge.confirmed{background:var(--teal-soft);color:var(--teal)}
+.history-item .hbadge.claimed{background:var(--amber-soft);color:var(--amber-ink)}
+.share-result{margin-top:12px}
+
+</style>
 </head>
 <body>
 <div class="wrap">
@@ -23,6 +49,7 @@
     <a class="brand" href="/"><img src="logo.svg" alt=""><span>R Studio Labs</span></a>
     <div class="nav-actions">
       <button class="nav-btn" id="themeToggle" type="button" aria-label="Ganti tema" title="Ganti tema">☾</button>
+      <button class="nav-btn" id="installBtn" type="button" title="Pasang aplikasi" style="display:none">⬇ Pasang</button>
       <a class="nav-btn primary" href="/">Sewa WiFi</a>
     </div>
   </nav>
@@ -57,7 +84,10 @@
       </div>
       <div class="timeline" id="rTimeline"></div>
       <p class="result-expiry" id="rExpiry"></p>
+      <div class="progress" id="rProgress" hidden><i></i></div>
+      <div class="history-list" id="historyList" hidden></div>
       <button class="btn ghost" id="copyBtn" type="button" style="margin-top:12px">Salin ID Transaksi</button>
+      <button class="btn ghost share-result" id="shareBtn" type="button">Bagikan Status</button>
     </div>
   </section>
 
@@ -146,6 +176,8 @@
     document.getElementById("rTime").textContent = "-";
     document.getElementById("rTimeline").innerHTML = "";
     expiryEl.textContent = msg;
+    document.getElementById('rProgress').hidden = true;
+    document.getElementById('historyList').hidden = true;
     currentId = null;
     resultEl.hidden = false;
   }
@@ -166,9 +198,12 @@
 
   function tickExpiry(data) {
     clearInterval(expiryTimer);
+    var bar = document.getElementById('rProgress');
+    bar.hidden = false;
     var start = dateOf(data.startedAt);
     if (!start) {
       expiryEl.textContent = "⏳ Waktu sewa belum dimulai. Admin akan memulainya setelah SSID & password dikirim ke WhatsApp-mu.";
+      bar.hidden = true;
       return;
     }
     var hours = Number(data.hours) || 0;
@@ -176,11 +211,14 @@
     var end = new Date(start.getTime() + hours * 3600000);
     function update() {
       var sisa = end.getTime() - Date.now();
-      if (sisa <= 0) { expiryEl.textContent = "⏰ Masa sewa sudah habis. Silakan sewa lagi untuk melanjutkan."; clearInterval(expiryTimer); return; }
+      if (sisa <= 0) { expiryEl.textContent = "⏰ Masa sewa sudah habis. Silakan sewa lagi untuk melanjutkan."; bar.querySelector('i').style.width = '0%'; clearInterval(expiryTimer); return; }
       var j = Math.floor(sisa / 3600000);
       var m = Math.floor((sisa % 3600000) / 60000);
       var detik = Math.floor((sisa % 60000) / 1000);
       expiryEl.textContent = "⏱ Sisa waktu sewa: " + j + " jam " + m + " menit " + detik + " detik";
+      var pct = Math.max(0, Math.min(100, (sisa / (hours * 3600000)) * 100));
+      bar.querySelector('i').style.width = pct + '%';
+      bar.className = 'progress' + (pct < 20 ? ' danger' : (pct < 50 ? ' warn' : ''));
     }
     update();
     expiryTimer = setInterval(update, 1000);
@@ -189,8 +227,8 @@
   function showResult(data) {
     clearInterval(expiryTimer);
     currentId = data.transactionId || "-";
-    var label = data.status === "confirmed" ? "Terkonfirmasi" : (data.status === "claimed" ? "Menunggu konfirmasi" : "Menunggu pembayaran");
-    var cls = data.status === "confirmed" ? "confirmed" : (data.status === "claimed" ? "claimed" : "");
+    var label = data.status === "expired" ? "Selesai" : (data.status === "confirmed" ? "Terkonfirmasi" : (data.status === "claimed" ? "Menunggu konfirmasi" : "Menunggu pembayaran"));
+    var cls = (data.status === "confirmed" || data.status === "expired") ? "confirmed" : (data.status === "claimed" ? "claimed" : "");
     statusEl.className = "badge-status " + cls;
     statusEl.textContent = label;
     document.getElementById("rId").textContent = currentId;
@@ -212,6 +250,45 @@
     return db.collection("transactions").where(field, "==", value).limit(1).get()
       .then(function (snap) { return snap.empty ? null : snap.docs[0].data(); });
   }
+  function escapeHtml(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(ch){
+      return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch];
+    });
+  }
+  function findAllBy(field, value) {
+    return db.collection("transactions").where(field, "==", value).limit(25).get()
+      .then(function (snap) {
+        return snap.docs.map(function (d) { return d.data(); })
+          .sort(function (a, b) {
+            var ta = dateOf(a.createdAt), tb = dateOf(b.createdAt);
+            return (tb ? tb.getTime() : 0) - (ta ? ta.getTime() : 0);
+          });
+      });
+  }
+  function showHistory(items){
+    clearInterval(expiryTimer);
+    resultEl.hidden = false;
+    document.getElementById('rProgress').hidden = true;
+    statusEl.className = 'badge-status';
+    statusEl.textContent = items.length + ' transaksi ditemukan';
+    ['rId','rHours','rTotal','rTime'].forEach(function(id){ document.getElementById(id).textContent = '-'; });
+    expiryEl.textContent = 'Pilih transaksi di bawah untuk melihat detail dan sisa waktunya.';
+    var box = document.getElementById('historyList');
+    box.innerHTML = items.map(function(t, idx){
+      var cls = t.status === 'confirmed' || t.status === 'expired' ? 'confirmed' : (t.status === 'claimed' ? 'claimed' : '');
+      var label = t.status === 'expired' ? 'Selesai' : (t.status === 'confirmed' ? 'Selesai' : (t.status === 'claimed' ? 'Dibayar' : 'Menunggu'));
+      var created = dateOf(t.createdAt);
+      var when = created ? created.toLocaleString('id-ID', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }) : '-';
+      return '<button class="history-item" data-index="' + idx + '"><div><div class="hid">' +
+        escapeHtml(t.transactionId || '-') + '</div><div class="hsub">' + (t.hours || '-') +
+        ' jam · ' + rp(t.amount) + ' · ' + when + '</div></div><span class="hbadge ' + cls + '">' + label + '</span></button>';
+    }).join('');
+    box.hidden = false;
+    box.querySelectorAll('.history-item').forEach(function(btn){
+      btn.addEventListener('click', function(){ box.hidden = true; showResult(items[+btn.dataset.index]); });
+    });
+    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
 
   document.getElementById("lookupForm").addEventListener("submit", function (e) {
     e.preventDefault();
@@ -223,14 +300,19 @@
     btn.disabled = true;
     btn.textContent = "Mencari…";
     var d = digitsOf(raw);
-    var first = d.length >= 9 ? findBy("whatsapp", waFormat(raw)) : findBy("transactionId", raw.toUpperCase());
-    first.then(function (data) {
-      if (data) return data;
-      if (d.length >= 9) return findBy("whatsapp", d);
-      return null;
-    }).then(function (data) {
-      if (data) showResult(data);
-      else showError("Transaksi tidak ditemukan. Pastikan ID atau nomor WhatsApp yang kamu masukkan sudah benar.");
+    var byPhone = d.length >= 9;
+    var task = byPhone
+      ? findAllBy("whatsapp", waFormat(raw)).then(function (list) {
+          return list.length ? list : findAllBy("whatsapp", d);
+        })
+      : findBy("transactionId", raw.toUpperCase()).then(function (data) { return data ? [data] : []; });
+    task.then(function (list) {
+      if (!list || !list.length){
+        showError("Transaksi tidak ditemukan. Pastikan ID atau nomor WhatsApp yang kamu masukkan sudah benar.");
+        return;
+      }
+      if (byPhone && list.length > 1) showHistory(list);
+      else showResult(list[0]);
     }).catch(function (err) {
       console.error(err);
       showError("Gagal menghubungi database. Periksa koneksi internet lalu coba lagi.");
@@ -255,6 +337,15 @@
       autoRefreshing = false;
     }
   }, 15000);
+
+  document.getElementById('shareBtn').addEventListener('click', function(){
+    if (!currentId || currentId === '-') { toast('Belum ada transaksi yang ditampilkan.'); return; }
+    var base = (location.origin && location.origin !== 'null') ? location.origin : '';
+    var url = base + '/verify-user?id=' + encodeURIComponent(currentId);
+    if (navigator.share) navigator.share({ title: 'Status Sewa WiFi RSL', text: 'Cek status pesanan WiFi saya', url: url }).catch(function(){});
+    else if (navigator.clipboard) navigator.clipboard.writeText(url).then(function(){ toast('Tautan status tersalin.'); }).catch(function(){ toast(url); });
+    else toast(url);
+  });
 
   var params = new URLSearchParams(location.search);
   var preset = params.get("id") || params.get("wa");

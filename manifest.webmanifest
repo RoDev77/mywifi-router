@@ -1,0 +1,27 @@
+{
+  "name": "R Studio Labs — Sewa WiFi",
+  "short_name": "RSL WiFi",
+  "description": "Sewa WiFi R STUDIO LABS Rp5.000/jam. Pilih durasi, bayar QRIS, langsung terhubung.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#e8f6f8",
+  "theme_color": "#0ea5b7",
+  "lang": "id",
+  "icons": [
+    {
+      "src": "/icon-512.png",
+      "sizes": "466x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Cek Status Pesanan",
+      "short_name": "Cek Status",
+      "url": "/verify-user"
+    }
+  ]
+}

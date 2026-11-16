@@ -5,41 +5,49 @@ Situs **R STUDIO LABS — Sewa WiFi** (Rp5.000/jam), terpasang di proyek Vercel
 
 ## Halaman
 
-- `index.html` — halaman utama sewa WiFi. Pilih durasi (1/2/3/5/10/24 jam atau
-  atur sendiri), ringkasan struk dengan total otomatis (biaya layanan 11%, maks.
-  Rp1.000), pembayaran QRIS dinamis, kode pesanan, dan status pembayaran realtime
-  lewat Firestore.
-  - **Fitur:** pengalih tema terang/gelap, nomor WhatsApp tersimpan di browser,
-    cek status pesanan & hitung mundur sisa sewa langsung di halaman, FAQ, toast,
-    salin ID transaksi, dan transaksi aktif yang pulih otomatis setelah refresh.
-  - **Waktu sewa** dihitung dari field `startedAt`, bukan `confirmedAt`. Field ini
-    diisi admin lewat tombol **Mulai Sewa** setelah SSID & password dikirim ke
-    WhatsApp pembeli. Sebelum tombol ditekan, pelanggan melihat status
-    "waktu sewa belum dimulai" (tidak ada hitung mundur yang berjalan mundur).
-- `verify-user.html` (`/verify-user`) — cek status pesanan lengkap berdasarkan ID
-  transaksi atau nomor WhatsApp, dengan timeline progres dan sisa waktu sewa.
-- `petugas.html` (`/petugas`) — panel admin (login Discord, role admin dari
-  Firestore). Konfigurasi merchant/QRIS, daftar transaksi realtime, konfirmasi
-  pembayaran, struk cetak & gambar struk, notifikasi suara.
-  - **Fitur baru:** kartu statistik (transaksi/pendapatan hari ini, perlu
-    diproses, total transaksi), pencarian & filter status, export CSV, konfirmasi
-    massal, dan waktu relatif.
-  - Tombol **▶ Mulai Sewa** muncul di setiap transaksi yang sudah terkonfirmasi.
-    Menekannya menyimpan `startedAt` + `startedBy` ke Firestore setelah konfirmasi
-    bahwa kredensial WiFi sudah dikirim; setelah itu tampil hitung mundur sisa
-    sewa secara live.
+- `index.html` — halaman utama sewa WiFi. Pilih durasi, struk otomatis (biaya
+  layanan 11%, maks. Rp1.000), QRIS dinamis, kode pesanan, dan status realtime.
+  - Theme toggle terang/gelap, nomor WhatsApp tersimpan, cek status + hitung
+    mundur, FAQ, toast, salin ID, transaksi pulih setelah refresh.
+  - **Kode promo** (voucher) dengan diskon Rp / persen, kuota, dan minimal belanja.
+  - **Perpanjang sewa** langsung dari halaman sukses (+1/+2/+3/+5 jam).
+  - Progress bar sisa waktu (hijau → kuning → merah) dan tombol **Bagikan Status**.
+  - Installable via PWA (lihat bawah).
+- `verify-user.html` (`/verify-user`) — cek status lengkap: timeline progres,
+  sisa waktu + progress bar, **daftar semua transaksi per nomor WhatsApp**, dan
+  bagikan tautan status. Auto-refresh tiap 15 detik.
+- `petugas.html` (`/petugas`) — panel admin login Discord (role admin dari
+  Firestore): konfigurasi merchant/QRIS, transaksi realtime, konfirmasi, struk
+  cetak/gambar, notifikasi suara.
+  - Statistik + **grafik pendapatan 7 hari**, pencarian/filter status, export CSV,
+    konfirmasi massal, waktu relatif.
+  - Tombol **▶ Mulai Sewa** per transaksi → menyimpan `startedAt` + `startedBy`.
+    Klik **Selesai** / tombol **Tandai yang sudah habis**, atau auto-expire tiap
+    menit → status `expired`.
+  - Kelola **voucher**: buat kode, diskon Rp/%, kuota, aktif/nonaktif, hapus.
+  - Transaksi perpanjangan otomatis menambah `hours` transaksi induk saat dikonfirmasi.
 - `admin.html` (`/admin`) — peluncur ke panel router rumah (`192.168.0.1`).
-- `404.html` — halaman tidak ditemukan.
-- `terms-of-service.html` (`/terms-of-service`) dan `privacy-policy.html`
-  (`/privacy-policy`) — dokumen layanan.
+- `404.html`, `terms-of-service.html`, `privacy-policy.html` — halaman pendukung.
 - `styles.css` — design system bersama untuk halaman konten.
-- `logo.svg` — logo merek.
 
-## Desain
+## PWA
 
-Design system modern: tipografi Plus Jakarta Sans + JetBrains Mono, kartu glass,
-mesh gradient, animasi halus, responsif, dukungan dark mode (otomatis maupun
-manual melalui tombol di header), dan `prefers-reduced-motion`.
+`manifest.webmanifest`, `sw.js`, `pwa.js`, dan `icon-512.png` membuat situs bisa
+dipasang ke home screen. Service worker memakai **network-first untuk navigasi**
+dan **cache-first untuk aset lokal**; permintaan ke Firebase/Google Fonts tidak
+di-cache. Tombol pasang muncul otomatis saat browser mendukung prompt install.
+
+## Model data Firestore
+
+- `transactions/{id}` — field baru: `startedAt`, `startedBy`, `type` (`wifi` /
+  `extension`), `extensionOf`, `voucher`, `discount`, `endedAt`, status `expired`.
+- `vouchers/{KODE}` — `code`, `type` (`fixed`/`percent`), `value`, `quota`,
+  `used`, `active`, `createdAt`.
+
+> **Catatan deployment:** aturan Firestore harus mengizinkan `read` pada
+> `vouchers` untuk pelanggan dan `write` untuk admin, serta `update` pada
+> `transactions` (field baru). Domain produksi juga harus terdaftar di
+> Firebase → Authentication → Authorized Domains agar query Firestore jalan.
 
 ## Deploy
 
