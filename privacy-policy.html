@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0ea5b7">
+<title>Kebijakan Privasi — R STUDIO LABS</title>
+<meta name="description" content="Kebijakan privasi layanan sewa WiFi R STUDIO LABS.">
+<link rel="icon" type="image/svg+xml" href="logo.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+<script>
+(function(){try{var t=localStorage.getItem('rsl_theme');if(!t)t=(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();
+</script>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+  <nav class="site-nav">
+    <a class="brand" href="/"><img src="logo.svg" alt=""><span>R Studio Labs</span></a>
+    <div class="nav-actions">
+      <button class="nav-btn" id="themeToggle" type="button" aria-label="Ganti tema" title="Ganti tema">☾</button>
+      <a class="nav-btn primary" href="/">Sewa WiFi</a>
+    </div>
+  </nav>
+
+  <header class="page-head">
+    <div class="eyebrow">Dokumen layanan</div>
+    <h1>Kebijakan Privasi</h1>
+    <p>Kami menghargai privasimu. Halaman ini menjelaskan data apa yang kami kumpulkan, bagaimana kami menggunakannya, dan pilihan yang kamu miliki.</p>
+  </header>
+
+  <section class="panel prose">
+    <h2>1. Data yang Kami Kumpulkan</h2>
+    <ul>
+      <li><strong>Nomor WhatsApp</strong> — dipakai untuk mengirim SSID, password WiFi, dan informasi transaksi.</li>
+      <li><strong>Detail transaksi</strong> — durasi sewa, jumlah pembayaran, ID transaksi, status, dan waktu pembayaran.</li>
+      <li><strong>Data teknis</strong> — informasi perangkat dan browser yang dikirim otomatis oleh browser saat kamu mengunjungi situs.</li>
+    </ul>
+    <p>Kami tidak meminta nama lengkap, alamat, atau data kartu pembayaran. Pembayaran diproses sepenuhnya melalui QRIS.</p>
+
+    <h2>2. Bagaimana Data Digunakan</h2>
+    <p>Data yang kami kumpulkan digunakan untuk:</p>
+    <ul>
+      <li>Memproses dan memverifikasi pembayaran sewa WiFi.</li>
+      <li>Mengirim kredensial WiFi dan struk transaksi ke WhatsApp-mu.</li>
+      <li>Menampilkan status pesanan melalui fitur <a href="/verify-user">Cek Status Pesanan</a>.</li>
+      <li>Menjaga keamanan dan mencegah penyalahgunaan layanan.</li>
+    </ul>
+
+    <h2>3. Penyimpanan Data</h2>
+    <p>Data transaksi disimpan pada layanan Firebase Firestore milik Google. Preferensi tampilan (tema terang/gelap) dan sesi admin disimpan secara lokal di browser kamu melalui <code>localStorage</code>. Kamu dapat menghapusnya kapan saja melalui pengaturan browser.</p>
+
+    <h2>4. Pihak Ketiga</h2>
+    <ul>
+      <li><strong>Firebase (Google)</strong> — penyimpanan data transaksi dan konfigurasi.</li>
+      <li><strong>Google Fonts</strong> — font tampilan situs.</li>
+      <li><strong>Discord</strong> — hanya digunakan pada halaman admin untuk autentikasi petugas.</li>
+      <li><strong>Penyedia QRIS</strong> — memproses pembayaran sesuai skema QRIS nasional.</li>
+    </ul>
+    <p>Kami tidak menjual atau membagikan data pribadimu kepada pihak lain untuk kepentingan komersial.</p>
+
+    <h2>5. Retensi Data</h2>
+    <p>Data transaksi disimpan untuk keperluan pembukuan dan verifikasi. Data lama dapat kami hapus secara berkala sesuai kebutuhan operasional.</p>
+
+    <h2>6. Hak Kamu</h2>
+    <p>Kamu dapat meminta penghapusan data transaksi dengan menghubungi admin melalui kanal WhatsApp resmi R STUDIO LABS, dengan menyertakan ID transaksi yang bersangkutan.</p>
+
+    <h2>7. Perubahan Kebijakan</h2>
+    <p>Kebijakan ini dapat diperbarui sewaktu-waktu. Perubahan akan diumumkan pada halaman ini dengan tanggal pembaruan terbaru.</p>
+
+    <p style="margin-top:20px;font-size:12px">Terakhir diperbarui: 16 November 2026.</p>
+  </section>
+
+  <footer>
+    R STUDIO LABS — Sewa WiFi Rp5.000/jam<br>
+    <a href="/">Sewa WiFi</a> · <a href="/verify-user">Cek Status</a> · <a href="/terms-of-service">Syarat &amp; Ketentuan</a>
+  </footer>
+</div>
+<script>
+(function(){
+  var t = document.getElementById('themeToggle');
+  function sync(){ t.textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? '☀' : '☾'; }
+  sync();
+  t.addEventListener('click', function(){
+    var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try{ localStorage.setItem('rsl_theme', next); }catch(e){}
+    sync();
+  });
+})();
+</script>
+</body>
+</html>

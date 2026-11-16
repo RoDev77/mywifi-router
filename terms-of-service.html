@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0ea5b7">
+<title>Syarat &amp; Ketentuan — R STUDIO LABS</title>
+<meta name="description" content="Syarat dan ketentuan layanan sewa WiFi R STUDIO LABS.">
+<link rel="icon" type="image/svg+xml" href="logo.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+<script>
+(function(){try{var t=localStorage.getItem('rsl_theme');if(!t)t=(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();
+</script>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+  <nav class="site-nav">
+    <a class="brand" href="/"><img src="logo.svg" alt=""><span>R Studio Labs</span></a>
+    <div class="nav-actions">
+      <button class="nav-btn" id="themeToggle" type="button" aria-label="Ganti tema" title="Ganti tema">☾</button>
+      <a class="nav-btn primary" href="/">Sewa WiFi</a>
+    </div>
+  </nav>
+
+  <header class="page-head">
+    <div class="eyebrow">Dokumen layanan</div>
+    <h1>Syarat &amp; Ketentuan</h1>
+    <p>Berlaku untuk semua transaksi sewa WiFi R STUDIO LABS. Dengan melakukan pembayaran, kamu dianggap telah membaca dan menyetujui ketentuan di bawah ini.</p>
+  </header>
+
+  <section class="panel prose">
+    <h2>1. Layanan</h2>
+    <p>R STUDIO LABS menyediakan layanan sewa akses internet WiFi dengan tarif <strong>Rp5.000 per jam</strong>. Durasi tersedia mulai dari 1 jam sampai 24 jam, atau dapat diatur sendiri sesuai kebutuhan.</p>
+
+    <h2>2. Pembayaran</h2>
+    <ul>
+      <li>Pembayaran hanya diterima melalui <strong>QRIS</strong> (e-wallet dan m-banking yang mendukung QRIS).</li>
+      <li>Kami tidak menerima pembayaran tunai / bayar di tempat.</li>
+      <li>Terdapat <strong>biaya layanan 11%</strong> dengan batas maksimal Rp1.000 per transaksi. Rincian lengkap ditampilkan pada struk kasir sebelum pembayaran.</li>
+      <li>Setelah membayar, kamu wajib menekan tombol <strong>Saya Sudah Bayar</strong> agar admin dapat memverifikasi transaksi.</li>
+    </ul>
+
+    <h2>3. Aktivasi &amp; Durasi Sewa</h2>
+    <ul>
+      <li>Durasi sewa <strong>dimulai ketika admin mengirim SSID dan password WiFi</strong> ke nomor WhatsApp yang kamu daftarkan, bukan ketika pembayaran dilakukan.</li>
+      <li>Pengiriman kredensial dilakukan setelah pembayaran terverifikasi, paling lambat 1×30 menit saat jam operasional.</li>
+      <li>Kamu bisa memantau status pesanan dan sisa waktu sewa melalui halaman <a href="/verify-user">Cek Status Pesanan</a>.</li>
+    </ul>
+
+    <h2>4. Penggunaan WiFi</h2>
+    <ul>
+      <li>Kredensial WiFi bersifat pribadi dan tidak boleh dibagikan kepada pihak lain.</li>
+      <li>Dilarang menggunakan koneksi untuk aktivitas ilegal, pelanggaran hak cipta, spam, atau aktivitas yang mengganggu jaringan dan pengguna lain.</li>
+      <li>Kami berhak membatasi atau menghentikan akses bila terdeteksi penyalahgunaan tanpa pengembalian dana.</li>
+    </ul>
+
+    <h2>5. Perpanjangan &amp; Pengembalian Dana</h2>
+    <p>Setelah durasi berakhir, kamu perlu membuat transaksi baru untuk melanjutkan. Karena layanan bersifat langsung (waktu terbatas), pembayaran yang sudah terverifikasi <strong>tidak dapat dikembalikan</strong>, kecuali terjadi kegagalan sistem dari kami yang membuat WiFi tidak dapat digunakan sejak awal.</p>
+
+    <h2>6. Perubahan Layanan</h2>
+    <p>Kami dapat mengubah tarif, ketentuan, atau fitur layanan sewaktu-waktu. Perubahan tidak berlaku surut untuk transaksi yang sudah dibayar dan dikonfirmasi.</p>
+
+    <h2>7. Hubungi Kami</h2>
+    <p>Untuk kendala pembayaran, kredensial belum diterima, atau pertanyaan lainnya, silakan hubungi admin melalui kanal WhatsApp resmi R STUDIO LABS yang tercantum pada informasi toko.</p>
+
+    <p style="margin-top:20px;font-size:12px">Terakhir diperbarui: 16 November 2026.</p>
+  </section>
+
+  <footer>
+    R STUDIO LABS — Sewa WiFi Rp5.000/jam<br>
+    <a href="/">Sewa WiFi</a> · <a href="/verify-user">Cek Status</a> · <a href="/privacy-policy">Kebijakan Privasi</a>
+  </footer>
+</div>
+<script>
+(function(){
+  var t = document.getElementById('themeToggle');
+  function sync(){ t.textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? '☀' : '☾'; }
+  sync();
+  t.addEventListener('click', function(){
+    var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try{ localStorage.setItem('rsl_theme', next); }catch(e){}
+    sync();
+  });
+})();
+</script>
+</body>
+</html>

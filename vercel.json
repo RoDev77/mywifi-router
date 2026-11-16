@@ -10,19 +10,19 @@
       "destination": "/"
     },
     {
-      "source": "/error",
-      "destination": "/404.html"
-    },
-    {
       "source": "/verify-user",
-      "destination": "/404.html"
+      "destination": "/verify-user.html"
     },
     {
       "source": "/terms-of-service",
-      "destination": "/404.html"
+      "destination": "/terms-of-service.html"
     },
     {
       "source": "/privacy-policy",
+      "destination": "/privacy-policy.html"
+    },
+    {
+      "source": "/error",
       "destination": "/404.html"
     }
   ]
