@@ -452,6 +452,7 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
         <div><span>Waktu</span><b id="trTime">-</b></div>
       </div>
       <p class="track-expiry" id="trExpiry"></p>
+      <p class="track-hint" id="trExtNote" style="display:none;color:var(--teal);font-weight:800"></p>
       <div class="progress" id="trProgress" style="display:none"><i></i></div>
       <button class="link-btn" id="trCopy" type="button">Salin ID transaksi</button>
     </div>
@@ -854,9 +855,8 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
         whatsapp: currentWa,
         hours: hours,
         type: extensionOf ? "extension" : "wifi",
-        extensionOf: extensionOf,
-        voucher: voucher ? voucher.code : null,
-        discount: voucher ? voucher.amount : 0
+        ...(extensionOf ? { extensionOf: extensionOf } : {}),
+        ...(voucher ? { voucher: voucher.code, discount: voucher.amount } : {})
       }).then(function (ref) {
         if (voucher && db){
           db.collection("vouchers").doc(voucher.code).update({
@@ -984,36 +984,62 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
     var btn = document.getElementById("trackBtn");
     btn.disabled = true; btn.textContent = "…";
     var digits = raw.replace(/\D/g, "");
-    function query(field, value){
-      return db.collection("transactions").where(field, "==", value).limit(1).get()
-        .then(function(s){ return s.empty ? null : s.docs[0].data(); });
+    function queryAll(field, value){
+      return db.collection("transactions").where(field, "==", value).limit(25).get()
+        .then(function(s){ return s.docs.map(function(d){ return d.data(); }); });
     }
-    query(digits.length >= 9 ? "whatsapp" : "transactionId", digits.length >= 9 ? waFormat(raw) : raw.toUpperCase())
-      .then(function(data){ if (data) return data; return digits.length >= 9 ? query("whatsapp", digits) : null; })
+    function pickBest(list){
+      var main = list.filter(function(x){ return x.type !== "extension"; });
+      return main.find(function(x){ return x.status === "confirmed" && x.startedAt; })
+        || main.find(function(x){ return x.status === "confirmed"; })
+        || main[0] || list[0] || null;
+    }
+    function resolveParent(data){
+      if (!data || data.type !== "extension" || !data.extensionOf) return Promise.resolve(data);
+      return db.collection("transactions").doc(data.extensionOf).get().then(function(s){
+        if (!s.exists) return data;
+        var p = s.data();
+        p._extAmount = Number(data.amount) || 0;
+        p._extNote = "Termasuk perpanjangan +" + (Number(data.hours) || 0) + " jam (" + (data.transactionId || "-") + ")";
+        return p;
+      }).catch(function(){ return data; });
+    }
+    queryAll(digits.length >= 9 ? "whatsapp" : "transactionId", digits.length >= 9 ? waFormat(raw) : raw.toUpperCase())
+      .then(function(list){ return list.length ? list : (digits.length >= 9 ? queryAll("whatsapp", digits) : []); })
+      .then(function(list){ return resolveParent(pickBest(list)); })
       .then(function(data){
         if (!data){ setTrackError("Transaksi tidak ditemukan. Periksa kembali ID atau nomor WhatsApp-mu."); return; }
         clearInterval(trackExpiryTimer);
         var st = document.getElementById("trStatus");
-        var label = data.status === "confirmed" ? "Terkonfirmasi" : (data.status === "claimed" ? "Menunggu konfirmasi" : "Menunggu pembayaran");
-        st.className = "badge-status " + (data.status === "confirmed" ? "confirmed" : (data.status === "claimed" ? "claimed" : ""));
+        var label = data.status === "expired" ? "Selesai" : (data.status === "confirmed" ? "Terkonfirmasi" : (data.status === "claimed" ? "Menunggu konfirmasi" : "Menunggu pembayaran"));
+        st.className = "badge-status " + ((data.status === "confirmed" || data.status === "expired") ? "confirmed" : (data.status === "claimed" ? "claimed" : ""));
         st.textContent = label;
         document.getElementById("trId").textContent = data.transactionId || "-";
         document.getElementById("trHours").textContent = (data.hours || "-") + " jam";
-        document.getElementById("trTotal").textContent = rp(data.amount);
+        document.getElementById("trTotal").textContent = rp((Number(data.amount) || 0) + (data._extAmount || 0));
+        var noteEl = document.getElementById("trExtNote");
+        if (data._extNote){ noteEl.textContent = data._extNote; noteEl.style.display = ""; }
+        else { noteEl.textContent = ""; noteEl.style.display = "none"; }
         var created = data.createdAt && typeof data.createdAt.toDate === "function" ? data.createdAt.toDate() : null;
         document.getElementById("trTime").textContent = created ? created.toLocaleString("id-ID", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "-";
         var exp = document.getElementById("trExpiry");
         if (data.status === "confirmed"){
           var start = dateOfTxn(data.startedAt);
           if (!start){
+            document.getElementById("trProgress").style.display = "none";
             exp.textContent = "⏳ Waktu sewa belum dimulai. Admin akan memulainya setelah SSID & password dikirim ke WhatsApp-mu.";
           } else {
+            document.getElementById("trProgress").style.display = "";
             var jamSewa = Number(data.hours) || 0;
             var end = new Date(start.getTime() + jamSewa * 3600000);
             function tick(){
               var sisa = end.getTime() - Date.now();
-              if (sisa <= 0){ exp.textContent = "⏰ Masa sewa sudah habis. Silakan sewa lagi."; clearInterval(trackExpiryTimer); return; }
+              if (sisa <= 0){ exp.textContent = "⏰ Masa sewa sudah habis. Silakan sewa lagi."; document.getElementById("trProgress").style.display = "none"; clearInterval(trackExpiryTimer); return; }
               exp.textContent = "⏱ Sisa waktu sewa: " + Math.floor(sisa/3600000) + " jam " + Math.floor((sisa%3600000)/60000) + " menit " + Math.floor((sisa%60000)/1000) + " detik";
+              var pct = Math.max(0, Math.min(100, (sisa / (jamSewa * 3600000)) * 100));
+              var bar = document.getElementById("trProgress");
+              bar.querySelector("i").style.width = pct + "%";
+              bar.className = "progress" + (pct < 20 ? " danger" : (pct < 50 ? " warn" : ""));
             }
             tick();
             trackExpiryTimer = setInterval(tick, 1000);

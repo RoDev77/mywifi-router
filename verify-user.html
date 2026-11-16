@@ -40,6 +40,8 @@
 .history-item .hbadge.confirmed{background:var(--teal-soft);color:var(--teal)}
 .history-item .hbadge.claimed{background:var(--amber-soft);color:var(--amber-ink)}
 .share-result{margin-top:12px}
+.ext-note{font-size:12px;font-weight:800;color:var(--teal);text-align:center;margin-top:10px;line-height:1.5}
+.ext-note[hidden]{display:none}
 
 </style>
 </head>
@@ -84,6 +86,7 @@
       </div>
       <div class="timeline" id="rTimeline"></div>
       <p class="result-expiry" id="rExpiry"></p>
+      <p class="ext-note" id="rExtNote" hidden></p>
       <div class="progress" id="rProgress" hidden><i></i></div>
       <div class="history-list" id="historyList" hidden></div>
       <button class="btn ghost" id="copyBtn" type="button" style="margin-top:12px">Salin ID Transaksi</button>
@@ -224,7 +227,18 @@
     expiryTimer = setInterval(update, 1000);
   }
 
-  function showResult(data) {
+  async function showResult(data) {
+    if (data && data.type === 'extension' && data.extensionOf){
+      try{
+        const snap = await db.collection('transactions').doc(data.extensionOf).get();
+        if (snap.exists){
+          const parent = snap.data();
+          parent._extAmount = Number(data.amount) || 0;
+          parent._extNote = 'Termasuk perpanjangan +' + (Number(data.hours) || 0) + ' jam (' + (data.transactionId || '-') + ')';
+          data = parent;
+        }
+      }catch(e){ console.error(e); }
+    }
     clearInterval(expiryTimer);
     currentId = data.transactionId || "-";
     var label = data.status === "expired" ? "Selesai" : (data.status === "confirmed" ? "Terkonfirmasi" : (data.status === "claimed" ? "Menunggu konfirmasi" : "Menunggu pembayaran"));
@@ -233,7 +247,10 @@
     statusEl.textContent = label;
     document.getElementById("rId").textContent = currentId;
     document.getElementById("rHours").textContent = (data.hours || "-") + " jam";
-    document.getElementById("rTotal").textContent = rp(data.amount);
+    document.getElementById("rTotal").textContent = rp((Number(data.amount) || 0) + (data._extAmount || 0));
+    const noteEl = document.getElementById('rExtNote');
+    if (data._extNote){ noteEl.textContent = data._extNote; noteEl.hidden = false; }
+    else { noteEl.textContent = ''; noteEl.hidden = true; }
     var created = dateOf(data.createdAt);
     document.getElementById("rTime").textContent = created
       ? created.toLocaleString("id-ID", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
@@ -259,6 +276,7 @@
     return db.collection("transactions").where(field, "==", value).limit(25).get()
       .then(function (snap) {
         return snap.docs.map(function (d) { return d.data(); })
+          .filter(function (t) { return t.type !== 'extension'; })
           .sort(function (a, b) {
             var ta = dateOf(a.createdAt), tb = dateOf(b.createdAt);
             return (tb ? tb.getTime() : 0) - (ta ? ta.getTime() : 0);

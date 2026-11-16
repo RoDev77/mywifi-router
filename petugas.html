@@ -917,14 +917,23 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
           if (snap.exists){
             const upd = {
               hours: firebase.firestore.FieldValue.increment(Number(data.hours)),
+              amount: firebase.firestore.FieldValue.increment(Number(data.amount) || 0),
               extendedAt: firebase.firestore.FieldValue.serverTimestamp()
             };
-            if (snap.data().status === 'expired'){
-              upd.status = 'confirmed';
-              upd.startedAt = firebase.firestore.FieldValue.serverTimestamp();
-            }
-            await baseRef.update(upd);
+            const base = snap.data();
+          if (!base.startedAt){
+            upd.startedAt = firebase.firestore.FieldValue.serverTimestamp();
+            upd.startedBy = adminUsername || 'admin';
           }
+          if (base.status === 'expired'){
+            upd.status = 'confirmed';
+            if (!upd.startedAt) upd.startedAt = firebase.firestore.FieldValue.serverTimestamp();
+          }
+          await baseRef.update(upd);
+          await db.collection('transactions').doc(id).update({
+            startedAt: base.startedAt || firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }
         }catch(e){ console.error('Gagal menerapkan perpanjangan:', e); }
       }
     }catch(err){
