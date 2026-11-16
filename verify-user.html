@@ -115,11 +115,11 @@
     <h2>Pertanyaan umum</h2>
     <details>
       <summary>Kapan WiFi aktif?</summary>
-      <p>Durasi sewa dimulai ketika admin menekan tombol <strong>Mulai Sewa</strong> setelah SSID dan password WiFi dikirim ke WhatsApp-mu. Sisa waktu akan tampil otomatis di halaman ini.</p>
+      <p>Durasi sewa dimulai otomatis ketika admin menyimpan SSID &amp; password WiFi di panel. Kredensial langsung tampil di halaman ini, dan sisa waktunya terpantau otomatis.</p>
     </details>
     <details>
       <summary>Status saya "Menunggu konfirmasi", apa yang harus dilakukan?</summary>
-      <p>Tekan tombol <strong>Saya Sudah Bayar</strong> di halaman pembayaran setelah transfer QRIS selesai. Admin akan memverifikasi pembayaran dan mengirim kredensial WiFi ke WhatsApp-mu.</p>
+      <p>Tekan tombol <strong>Saya Sudah Bayar</strong> di halaman pembayaran setelah transfer QRIS selesai. Admin akan memverifikasi pembayaran dan menyimpan kredensial; setelah itu SSID &amp; password tampil di halaman ini.</p>
     </details>
     <details>
       <summary>Bisa cek pakai nomor WhatsApp saja?</summary>
@@ -207,7 +207,7 @@
       { key: "created", label: "Pesanan dibuat", done: true, sub: "QRIS siap dibayar" },
       { key: "claimed", label: "Pembayaran dikirim", done: data.status !== "pending", sub: "Menunggu verifikasi admin" },
       { key: "confirmed", label: "Pembayaran terkonfirmasi", done: data.status === "confirmed", sub: "Admin memverifikasi pembayaran" },
-      { key: "started", label: "Waktu sewa dimulai", done: !!dateOf(data.startedAt), sub: "SSID & password sudah dikirim ke WhatsApp" }
+      { key: "started", label: "Waktu sewa dimulai", done: !!dateOf(data.startedAt), sub: "SSID & password tersedia di halaman ini" }
     ];
     var html = steps.map(function (s) {
       var cls = s.done ? "done" : ((s.key === "started" && data.status === "confirmed") ? "current" : (s.key === "claimed" && data.status === "pending" ? "current" : ""));
@@ -222,7 +222,7 @@
     bar.hidden = false;
     var start = dateOf(data.startedAt);
     if (!start) {
-      expiryEl.textContent = "⏳ Waktu sewa belum dimulai. Admin akan memulainya setelah SSID & password dikirim ke WhatsApp-mu.";
+      expiryEl.textContent = "⏳ Waktu sewa belum dimulai. Admin sedang menyiapkan kredensial — durasi berjalan otomatis setelah SSID & password disimpan.";
       bar.hidden = true;
       return;
     }
@@ -285,7 +285,7 @@
       : "-";
     renderTimeline(data);
     if (data.status === "confirmed") tickExpiry(data);
-    else if (data.status === "claimed") expiryEl.textContent = "✓ Pembayaran sudah kami terima. Admin sedang memverifikasi — SSID & password menyusul ke WhatsApp-mu.";
+    else if (data.status === "claimed") expiryEl.textContent = "✓ Pembayaran sudah kami terima. Admin sedang memverifikasi — SSID & password akan segera tampil di halaman ini.";
     else expiryEl.textContent = "📲 Scan QRIS pada halaman pembayaran, lalu tekan tombol Saya Sudah Bayar.";
     resultEl.hidden = false;
     if (!autoRefreshing) resultEl.scrollIntoView({ behavior: "smooth", block: "center" });

@@ -1044,7 +1044,7 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
     const txn = txnCache.get(id);
     if (!txn) return;
     const pesan = 'Mulai waktu sewa untuk ' + (txn.transactionId || 'transaksi ini') + '?\n\n' +
-      'Pastikan SSID & password SUDAH dikirim ke WhatsApp ' + (txn.whatsapp || 'pembeli') + '.\n' +
+      'Pastikan SSID & password sudah diisi pada form kredensial transaksi ini.\n' +
       'Waktu sewa akan berjalan sejak tombol ini ditekan.';
     if (!confirm(pesan)) return;
     btn.disabled = true;
@@ -1058,7 +1058,7 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
     }catch(err){
       console.error('Gagal mulai sewa:', err);
       btn.disabled = false;
-      btn.textContent = '▶ Mulai Sewa';
+      btn.textContent = 'Simpan & Mulai';
       alert('Gagal memulai waktu sewa. Coba lagi.');
     }
   }

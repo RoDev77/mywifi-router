@@ -437,7 +437,7 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
     <div class="wifi">
       <div>
         <div class="name">WiFi: R STUDIO LABS</div>
-        <div style="color:var(--muted);font-size:14.5px;margin-top:2px">SSID dan password dikirim ke WhatsApp-mu setelah pembayaran terkonfirmasi.</div>
+        <div style="color:var(--muted);font-size:14.5px;margin-top:2px">SSID &amp; password tampil otomatis di halaman setelah pembayaran terkonfirmasi. WhatsApp hanya untuk bantuan.</div>
       </div>
       <div class="price">Rp5.000<small>per jam</small></div>
     </div>
@@ -446,9 +446,9 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
   <section class="card">
     <h2>Cara sewa</h2>
     <div class="steps">
-      <div><b>1.</b> Pilih durasi dan isi nomor WhatsApp-mu.</div>
+      <div><b>1.</b> Pilih durasi dan isi nomor WhatsApp (untuk keperluan bantuan).</div>
       <div><b>2.</b> Tekan bayar, lalu scan &amp; bayar dengan QRIS.</div>
-      <div><b>3.</b> Tekan "Saya Sudah Bayar" — setelah dikonfirmasi, SSID dan password WiFi dikirim ke WhatsApp-mu.</div>
+      <div><b>3.</b> Tekan "Saya Sudah Bayar" — setelah dikonfirmasi, SSID dan password langsung tampil di halaman ini.</div>
     </div>
   </section>
 
@@ -485,11 +485,11 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
     <h2>Pertanyaan umum</h2>
     <details>
       <summary>Bagaimana cara sewa WiFi-nya?</summary>
-      <p>Pilih durasi, isi nomor WhatsApp, lalu tekan Bayar Sekarang. Scan QRIS dengan e-wallet atau m-banking, lalu tekan tombol Saya Sudah Bayar agar admin bisa memverifikasi dan mengirim SSID serta password WiFi.</p>
+      <p>Pilih durasi, isi nomor WhatsApp, lalu tekan Bayar Sekarang. Scan QRIS dengan e-wallet atau m-banking, lalu tekan tombol Saya Sudah Bayar. Setelah admin memverifikasi dan menyimpan kredensial, SSID serta password langsung muncul di halaman ini.</p>
     </details>
     <details>
       <summary>Kapan WiFi mulai aktif?</summary>
-      <p>Durasi sewa dimulai saat admin menekan tombol <strong>Mulai Sewa</strong> setelah SSID dan password dikirim ke WhatsApp-mu — bukan sejak pembayaran. Sisa waktunya bisa dipantau lewat halaman Cek Status Pesanan.</p>
+      <p>Durasi sewa dimulai otomatis saat admin menyimpan SSID &amp; password di panel — bukan sejak pembayaran. Sisa waktunya bisa dipantau lewat halaman Cek Status Pesanan.</p>
     </details>
     <details>
       <summary>Metode pembayaran apa saja?</summary>
@@ -778,7 +778,7 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
     dev.classList.remove("err");
     var hint = document.getElementById("devHint");
     hint.classList.remove("warn");
-    hint.textContent = "Nomor ini dipakai untuk mengirim SSID dan password WiFi setelah pembayaranmu terkonfirmasi, termasuk informasi penting lainnya.";
+    hint.textContent = "Nomor WhatsApp dipakai hanya jika kamu butuh bantuan. Kredensial WiFi tampil otomatis di halaman setelah pembayaran dikonfirmasi.";
     if (voucher && waFormat(dev.value) !== voucherWa){
       voucher = null; voucherWa = "";
       setVoucherMsg("Nomor WhatsApp berubah — kode promo dilepas.", false);
@@ -1196,7 +1196,7 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
           var start = dateOfTxn(data.startedAt);
           if (!start){
             document.getElementById("trProgress").style.display = "none";
-            exp.textContent = "⏳ Waktu sewa belum dimulai. Admin akan memulainya setelah SSID & password dikirim ke WhatsApp-mu.";
+            exp.textContent = "⏳ Waktu sewa belum dimulai. Admin sedang menyiapkan SSID & password — durasi berjalan otomatis setelah kredensial disimpan.";
           } else {
             document.getElementById("trProgress").style.display = "";
             var jamSewa = Number(data.hours) || 0;
@@ -1214,7 +1214,7 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
             trackExpiryTimer = setInterval(tick, 1000);
           }
         } else if (data.status === "claimed"){
-          exp.textContent = "✓ Pembayaran diterima. Admin sedang memverifikasi — SSID & password menyusul ke WhatsApp.";
+          exp.textContent = "✓ Pembayaran diterima. Admin sedang memverifikasi — SSID & password akan segera tampil di halaman ini.";
         } else {
           exp.textContent = "📲 Scan QRIS lalu tekan tombol Saya Sudah Bayar.";
         }
