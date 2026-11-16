@@ -1,0 +1,37 @@
+.rsl-modal-overlay{
+  position:fixed;inset:0;z-index:2000;display:none;align-items:center;justify-content:center;padding:24px;
+  background:rgba(8,44,54,.55);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+}
+.rsl-modal-overlay.show{display:flex;animation:rslModalIn .2s ease both}
+.rsl-modal{
+  width:min(380px,100%);background:linear-gradient(180deg,#fff 0%,var(--soft,#eef8fa) 100%);
+  border:1px solid rgba(255,255,255,.9);border-radius:22px;padding:24px 22px 20px;
+  box-shadow:0 1px 2px rgba(8,44,54,.05),0 28px 60px -28px rgba(8,44,54,.65);
+  text-align:center;animation:rslModalPop .24s cubic-bezier(.2,1.2,.4,1) both;
+}
+.rsl-modal-icon{
+  width:48px;height:48px;margin:0 auto 14px;border-radius:15px;display:grid;place-items:center;font-size:22px;
+  background:var(--signal-soft,#e3f7fa);color:var(--signal-deep,#087f91);border:1px solid var(--line,#d4e9ed);
+}
+.rsl-modal.danger .rsl-modal-icon{background:var(--red-soft,#fde9e4);color:var(--red,#c33a26);border-color:transparent}
+.rsl-modal h3{font-size:17px;font-weight:800;letter-spacing:-.02em;color:var(--ink,#082c36);margin:0 0 8px}
+.rsl-modal p{font-size:13px;line-height:1.6;color:var(--muted,#5b7d87);margin:0 0 20px;white-space:pre-line}
+.rsl-modal-actions{display:flex;gap:9px}
+.rsl-modal-actions button{
+  flex:1;font:inherit;font-weight:800;font-size:13.5px;padding:12px 10px;border-radius:13px;cursor:pointer;
+  border:1.5px solid var(--line,#d4e9ed);background:var(--surface,#fff);color:var(--ink,#082c36);
+  transition:filter .14s ease,transform .14s ease,background .14s ease;
+}
+.rsl-modal-actions button:hover{filter:brightness(.98);transform:translateY(-1px)}
+.rsl-modal-actions button.primary{color:#fff;border-color:rgba(255,255,255,.16);background:linear-gradient(135deg,#0c94a8,#082c36)}
+.rsl-modal-actions button.danger{color:#fff;border-color:transparent;background:linear-gradient(135deg,#d9523d,#a72f1c)}
+.rsl-modal-actions button:focus-visible{outline:3px solid var(--amber,#ffb703);outline-offset:2px}
+@keyframes rslModalIn{from{opacity:0}to{opacity:1}}
+@keyframes rslModalPop{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:none}}
+@media (prefers-color-scheme:dark){
+  html:not([data-theme="light"]) .rsl-modal{background:linear-gradient(180deg,#122d39,#0d2530);border-color:rgba(255,255,255,.08)}
+  html:not([data-theme="light"]) .rsl-modal-actions button:not(.primary):not(.danger){background:rgba(18,45,57,.8);border-color:rgba(255,255,255,.09);color:#e6f4f6}
+}
+html[data-theme="dark"] .rsl-modal{background:linear-gradient(180deg,#122d39,#0d2530);border-color:rgba(255,255,255,.08)}
+html[data-theme="dark"] .rsl-modal-actions button:not(.primary):not(.danger){background:rgba(18,45,57,.8);border-color:rgba(255,255,255,.09);color:#e6f4f6}
+@media (prefers-reduced-motion:reduce){.rsl-modal-overlay,.rsl-modal{animation:none}}

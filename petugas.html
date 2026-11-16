@@ -357,7 +357,9 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
 .stats .stat.wide{grid-column:span 2}
 
 </style>
+<link rel="stylesheet" href="modal.css">
 <script src="pwa.js" defer></script>
+<script src="modal.js" defer></script>
 </head>
 <body>
 
@@ -901,7 +903,7 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
         ? `<div class="txn-wifi">🔁 Perpanjangan +${escapeHtml(String(t.hours ?? '-'))} jam · induk: ${escapeHtml(t.extensionOf || '-')}</div>`
         : '';
       const cryptoLine = t.paymentMethod === 'crypto'
-        ? `<div class="txn-crypto">💱 Crypto · ${escapeHtml(String(t.chain || '-').toUpperCase())} · ${t.cryptoAmount ? escapeHtml(String(t.cryptoAmount) + ' ' + (t.token || 'USDT')) : ''}<br>TxHash: ${t.txHash ? escapeHtml(t.txHash) : '-'}</div>`
+        ? `<div class="txn-crypto">💱 Crypto · ${escapeHtml(String(t.chain || '-').toUpperCase())} · ${t.cryptoAmount ? escapeHtml(String(t.cryptoAmount) + ' ' + (t.token || 'USDT')) : ''}<br>Pengirim: ${t.senderAddress ? escapeHtml(t.senderAddress) : '-'}<br>TxHash: ${t.txHash ? escapeHtml(t.txHash) : '-'}</div>`
         : '';
       const wifiLine = t.service === 'wifi'
         ? `<div class="txn-wifi">📶 WiFi — WA: ${escapeHtml(t.whatsapp || t.deviceName || '-')} · ${escapeHtml(String(t.hours ?? '-'))} jam</div>` +
@@ -970,7 +972,7 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
         const passInput = list.querySelector('[data-cred-pass="' + id + '"]');
         const ssid = ssidInput ? ssidInput.value.trim() : '';
         const pass = passInput ? passInput.value.trim() : '';
-        if (!ssid){ alert('SSID wajib diisi.'); return; }
+        if (!ssid){ await RSLModal.alert({ title: 'SSID belum diisi', message: 'SSID wajib diisi sebelum menyimpan kredensial.' }); return; }
         btn.disabled = true; btn.textContent = '...';
         try{
           const upd = {
@@ -986,7 +988,7 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
           btn.textContent = '✓ Tersimpan';
         }catch(err){
           console.error(err);
-          alert('Gagal menyimpan kredensial.');
+          await RSLModal.alert({ title: 'Gagal', message: 'Gagal menyimpan kredensial. Coba lagi.' });
           btn.disabled = false; btn.textContent = 'Simpan & Mulai';
         }
       });
@@ -1080,7 +1082,7 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
     const pesan = 'Mulai waktu sewa untuk ' + (txn.transactionId || 'transaksi ini') + '?\n\n' +
       'Pastikan SSID & password sudah diisi pada form kredensial transaksi ini.\n' +
       'Waktu sewa akan berjalan sejak tombol ini ditekan.';
-    if (!confirm(pesan)) return;
+    if (!(await RSLModal.confirm({ title: 'Mulai waktu sewa?', message: pesan, okText: 'Ya, mulai', danger: true }))) return;
     btn.disabled = true;
     btn.textContent = 'Memulai…';
     try{
@@ -1093,7 +1095,7 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
       console.error('Gagal mulai sewa:', err);
       btn.disabled = false;
       btn.textContent = 'Simpan & Mulai';
-      alert('Gagal memulai waktu sewa. Coba lagi.');
+      await RSLModal.alert({ title: 'Gagal', message: 'Gagal memulai waktu sewa. Coba lagi.' });
     }
   }
 
@@ -1161,13 +1163,13 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
   });
 
   document.getElementById('exportBtn').addEventListener('click', () => {
-    const rows = [['ID Transaksi', 'Status', 'Metode', 'Jaringan', 'TxHash', 'Jumlah Crypto', 'WhatsApp', 'Durasi', 'Total', 'Merchant', 'Waktu']];
+    const rows = [['ID Transaksi', 'Status', 'Metode', 'Jaringan', 'Alamat Pengirim', 'TxHash', 'Jumlah Crypto', 'WhatsApp', 'Durasi', 'Total', 'Merchant', 'Waktu']];
     allTxnDocs.forEach((d) => {
       const t = d.data();
       const waktu = t.createdAt && typeof t.createdAt.toDate === 'function'
         ? t.createdAt.toDate().toLocaleString('id-ID') : '';
       rows.push([t.transactionId || '', t.status || '', t.paymentMethod || 'qris', t.chain || '',
-        t.txHash || '', String(t.cryptoAmount ?? ''), t.whatsapp || '', String(t.hours ?? ''),
+        t.senderAddress || '', t.txHash || '', String(t.cryptoAmount ?? ''), t.whatsapp || '', String(t.hours ?? ''),
         String(t.amount ?? ''), t.merchantName || '', waktu]);
     });
     const csv = '\uFEFF' + rows.map((r) => r.map((v) => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\r\n');
@@ -1184,7 +1186,11 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
   document.getElementById('bulkConfirmBtn').addEventListener('click', async () => {
     const claimed = allTxnDocs.filter((d) => d.data().status === 'claimed');
     if (!claimed.length) return;
-    if (!confirm('Konfirmasi ' + claimed.length + ' transaksi yang sudah dibayar? Statusnya akan berubah menjadi Terkonfirmasi.')) return;
+    if (!(await RSLModal.confirm({
+      title: 'Konfirmasi massal',
+      message: 'Konfirmasi ' + claimed.length + ' transaksi yang sudah dibayar? Statusnya akan berubah menjadi Terkonfirmasi.',
+      okText: 'Ya, konfirmasi'
+    }))) return;
     const btn = document.getElementById('bulkConfirmBtn');
     btn.disabled = true;
     btn.textContent = 'Memproses…';
@@ -1254,7 +1260,12 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
         catch(err){ console.error(err); }
       }));
       box.querySelectorAll('[data-vdelete]').forEach((b) => b.addEventListener('click', async () => {
-        if (!confirm('Hapus voucher ' + b.dataset.vdelete + '?')) return;
+        if (!(await RSLModal.confirm({
+          title: 'Hapus voucher?',
+          message: 'Hapus voucher ' + b.dataset.vdelete + '? Tindakan ini tidak bisa dibatalkan.',
+          okText: 'Ya, hapus',
+          danger: true
+        }))) return;
         b.disabled = true;
         b.textContent = '...';
         try{
@@ -1262,7 +1273,7 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
           b.textContent = '✓';
         }catch(err){
           console.error(err);
-          alert('Gagal menghapus voucher. Cek aturan Firestore (delete voucher harus diizinkan).');
+          await RSLModal.alert({ title: 'Gagal menghapus', message: 'Gagal menghapus voucher. Cek aturan Firestore (delete voucher harus diizinkan).' });
           b.disabled = false;
           b.textContent = 'Hapus';
         }
@@ -1277,7 +1288,7 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
     const quota = Number(document.getElementById('voucherQuota').value) || 100;
     const type = document.getElementById('voucherType').value;
     const expiresAt = document.getElementById('voucherExpiry').value;
-    if (!code || !(value > 0)){ alert('Kode dan nilai voucher wajib diisi.'); return; }
+    if (!code || !(value > 0)){ await RSLModal.alert({ title: 'Data belum lengkap', message: 'Kode dan nilai voucher wajib diisi.' }); return; }
     btn.disabled = true; btn.textContent = '...';
     try{
       await db.collection('vouchers').doc(code).set({
@@ -1290,14 +1301,14 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
       btn.textContent = '✓ Tersimpan';
     }catch(err){
       console.error(err);
-      alert('Gagal menyimpan voucher. Cek Firestore Rules.');
+      await RSLModal.alert({ title: 'Gagal menyimpan', message: 'Gagal menyimpan voucher. Cek Firestore Rules.' });
       btn.textContent = 'Buat';
     }
     setTimeout(() => { btn.disabled = false; btn.textContent = 'Buat'; }, 1500);
   });
 
   async function tandaiSelesai(id, btn){
-    if (!confirm('Tandai sewa ini sudah selesai?')) return;
+    if (!(await RSLModal.confirm({ title: 'Tandai selesai?', message: 'Tandai sewa ini sudah selesai?', okText: 'Ya, selesai' }))) return;
     btn.disabled = true;
     try{
       await db.collection('transactions').doc(id).update({
@@ -1315,8 +1326,12 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
       const hours = Number(t.hours) || 0;
       return hours > 0 && t.startedAt.toDate().getTime() + hours * 3600000 <= now;
     });
-    if (!targets.length){ alert('Tidak ada sewa yang sudah melewati durasinya.'); return; }
-    if (!confirm('Tandai ' + targets.length + ' sewa yang sudah habis sebagai selesai?')) return;
+    if (!targets.length){ await RSLModal.alert({ title: 'Tidak ada', message: 'Tidak ada sewa yang sudah melewati durasinya.' }); return; }
+    if (!(await RSLModal.confirm({
+      title: 'Tandai selesai massal',
+      message: 'Tandai ' + targets.length + ' sewa yang sudah habis sebagai selesai?',
+      okText: 'Ya, tandai'
+    }))) return;
     btn.disabled = true; btn.textContent = 'Memproses…';
     let ok = 0;
     for (const d of targets){

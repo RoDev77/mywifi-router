@@ -437,8 +437,21 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
 .crypto-status{font-size:12px;line-height:1.6;margin-top:10px;font-weight:700;color:var(--muted)}
 .crypto-status.ok{color:var(--teal)}
 .crypto-status.err{color:var(--red)}
+
+.sender-field{margin-top:12px}
+.sender-field[hidden]{display:none}
+.sender-field label{display:block;font-weight:800;font-size:13px;margin-bottom:6px;color:var(--ink)}
+.sender-field input{
+  width:100%;font:inherit;font-size:15px;padding:12px 14px;border-radius:14px;
+  border:1.5px solid var(--line);background:var(--surface);color:var(--ink);
+}
+.sender-field input::placeholder{font-size:12.5px;color:#9db4ba}
+.sender-field input:focus{outline:none;border-color:var(--signal);box-shadow:0 0 0 4px rgba(14,165,183,.15)}
+.sender-hint{color:var(--muted);font-size:12px;margin-top:6px;line-height:1.5}
 </style>
+<link rel="stylesheet" href="modal.css">
 <script src="crypto-verify.js"></script>
+<script src="modal.js" defer></script>
 <script src="pwa.js" defer></script>
 </head>
 <body>
@@ -557,6 +570,12 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
     <input id="dev" type="tel" inputmode="tel" placeholder="cth: 0812 3456 7890" autocomplete="tel">
     <p class="devhint" id="devHint">Nomor WhatsApp hanya dipakai kalau kamu butuh bantuan dengan pesanan ini. Kredensial WiFi akan tampil otomatis di halaman setelah pembayaran dikonfirmasi.</p>
 
+    <div class="sender-field" id="senderField" hidden>
+      <label for="senderAddress">Alamat Pengirim Crypto</label>
+      <input id="senderAddress" type="text" autocomplete="off" placeholder="Alamat wallet yang kamu pakai untuk transfer">
+      <p class="sender-hint">Alamat ini akan dicocokkan dengan pengirim pada TxHash — bukti pembayaran jadi lebih valid.</p>
+    </div>
+
     <div class="voucher-row">
       <input id="voucherInput" type="text" placeholder="Kode promo (opsional)" autocomplete="off" maxlength="24">
       <button class="voucher-btn" id="voucherBtn" type="button">Pakai</button>
@@ -612,6 +631,7 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
       </div>
       <div class="crypto-box">
         <div class="crypto-line"><span>Alamat tujuan</span><b id="cryptoAddress">-</b></div>
+        <div class="crypto-line"><span>Dari (pengirim)</span><b id="cryptoSender">-</b></div>
         <div class="crypto-line"><span>ID Transaksi</span><b id="cryptoExpectedId">-</b></div>
         <p class="txn-line">Setelah transfer, masukkan TxHash di bawah. Sistem akan memeriksa alamat penerima dan nominalnya otomatis.</p>
         <input class="hash-input" id="txHashInput" type="text" autocomplete="off" placeholder="Tempel TxHash transaksi crypto">
@@ -1013,6 +1033,13 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
       return;
     }
     currentWa = digits;
+    if (payMethod === "crypto" && !document.getElementById("senderAddress").value.trim()){
+      toast("Isi alamat pengirim crypto dulu.");
+      var senderInput = document.getElementById("senderAddress");
+      senderInput.focus();
+      senderInput.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
     try { localStorage.setItem("rsl_wa", dev.value.trim()); } catch (e) {}
     payBtn.disabled = true;
     payBtn.textContent = "Membuat…";
@@ -1060,7 +1087,8 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
           chain: cryptoChain,
           walletAddress: cryptoConfig[cryptoChain],
           expectedCrypto: cryptoExpected(),
-          rate: Number(cryptoConfig.rate) || 16000
+          rate: Number(cryptoConfig.rate) || 16000,
+          senderAddress: document.getElementById("senderAddress").value.trim()
         } : {}),
         ...(extensionOf ? { extensionOf: extensionOf } : {}),
         ...(voucher ? { voucher: voucher.code, discount: voucher.amount } : {})
@@ -1099,6 +1127,7 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
     cryptoView.classList.remove("show");
     if (payMethod === "crypto"){
       document.getElementById("cryptoExpectedId").textContent = currentTxnCode || "-";
+    document.getElementById("cryptoSender").textContent = document.getElementById("senderAddress").value.trim() || "-";
       setTimeout(function(){
         document.getElementById("cryptoStatus").textContent = "Menunggu transfer " + (CHAIN_LABELS[cryptoChain] || cryptoChain) + "…";
         document.getElementById("cryptoStatus").className = "crypto-status";
@@ -1191,9 +1220,28 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
       toast(p === "granted" ? "Notifikasi diaktifkan." : "Notifikasi tidak diizinkan browser.");
     });
   });
-  document.getElementById("cancelBtn").addEventListener("click", function(){
-    if (!currentTxnId || !db){ toast("Tidak ada pesanan yang bisa dibatalkan."); return; }
-    if (!confirm("Batalkan pesanan ini? QRIS tidak lagi berlaku.")) return;
+  document.getElementById("cancelBtn").addEventListener("click", async function(){
+    if (!currentTxnId || !db){
+      await RSLModal.alert({ title: "Tidak ada pesanan", message: "Tidak ada pesanan yang bisa dibatalkan." });
+      return;
+    }
+    var methodNow = payMethod;
+    try{
+      var savedSession = JSON.parse(localStorage.getItem("rsl_active_txn") || "{}");
+      if (savedSession.method) methodNow = savedSession.method;
+    }catch(e){}
+    var methodNote = methodNow === "crypto"
+      ? "Transfer crypto tidak lagi berlaku."
+      : "QRIS tidak lagi berlaku.";
+    var oke = await RSLModal.confirm({
+      title: "Batalkan pesanan?",
+      message: "Batalkan pesanan ini? " + methodNote,
+      okText: "Ya, batalkan",
+      cancelText: "Lanjut bayar",
+      danger: true,
+      icon: "⚠"
+    });
+    if (!oke) return;
     var btn = this;
     btn.disabled = true; btn.textContent = "Membatalkan…";
     db.collection("transactions").doc(currentTxnId).update({
@@ -1224,6 +1272,7 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
       document.querySelectorAll(".method-chip").forEach(function(c){ c.classList.toggle("on", c === chip); });
       document.getElementById("qrisNote").style.display = payMethod === "qris" ? "" : "none";
       document.getElementById("cryptoNote").style.display = payMethod === "crypto" ? "" : "none";
+      document.getElementById("senderField").hidden = payMethod !== "crypto";
       render();
     });
   });
@@ -1249,7 +1298,7 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
     var statusEl = document.getElementById("cryptoStatus");
     statusEl.className = "crypto-status";
     statusEl.textContent = "Memverifikasi transaksi di jaringan…";
-    CryptoVerify.verify(cryptoChain, hash, cryptoExpected(), cryptoConfig[cryptoChain])
+    CryptoVerify.verify(cryptoChain, hash, cryptoExpected(), cryptoConfig[cryptoChain], document.getElementById("senderAddress").value.trim())
       .then(function(res){
         statusEl.textContent = res.message;
         statusEl.className = "crypto-status " + (res.ok ? "ok" : "err");
@@ -1403,7 +1452,7 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
   function saveSession(){
     try {
       if (currentTxnId) localStorage.setItem(SESSION_TXN_KEY, JSON.stringify({
-        id: currentTxnId, code: currentTxnCode, wa: currentWa, hours: hours, total: total(), method: payMethod, chain: cryptoChain
+        id: currentTxnId, code: currentTxnCode, wa: currentWa, hours: hours, total: total(), method: payMethod, chain: cryptoChain, sender: document.getElementById("senderAddress").value.trim()
       }));
       else localStorage.removeItem(SESSION_TXN_KEY);
     } catch (e) {}

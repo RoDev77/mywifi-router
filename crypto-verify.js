@@ -71,18 +71,21 @@
       }).catch(function () { return 18; })
     ]).then(function (a) { return { symbol: a[0], decimals: a[1] }; });
   }
-  function verifyEvm(chain, txhash, expectedAmount, expectedAddress) {
+  function verifyEvm(chain, txhash, expectedAmount, expectedAddress, senderAddress) {
     var url = RPC[chain];
     if (!url) return Promise.resolve(result(false, 'Jaringan tidak didukung.'));
     return rpc(url, 'eth_getTransactionReceipt', [txhash]).then(function (receipt) {
       if (!receipt) return result(false, 'Transaksi belum ditemukan / belum terkonfirmasi di jaringan.');
       if (receipt.status !== '0x1') return result(false, 'Transaksi gagal di jaringan (status bukan success).');
       var target = cleanHex(expectedAddress);
-      var logs = (receipt.logs || []).filter(function (l) {
+      var sender = senderAddress ? cleanHex(senderAddress) : '';
+      var transfers = (receipt.logs || []).filter(function (l) {
         return l.topics && cleanHex(l.topics[0]) === cleanHex(TRANSFER_TOPIC) &&
           addressFromTopic(l.topics[2]) === target;
       });
-      if (!logs.length) return result(false, 'Tidak ada transfer token ke alamat pembayaran pada transaksi ini.');
+      if (!transfers.length) return result(false, 'Tidak ada transfer token ke alamat pembayaran pada transaksi ini.');
+      var logs = sender ? transfers.filter(function (l) { return addressFromTopic(l.topics[1]) === sender; }) : transfers;
+      if (!logs.length) return result(false, 'Alamat pengirim tidak cocok dengan TxHash ini.');
       var log = logs[logs.length - 1];
       return tokenInfo(url, log.address, receipt.blockNumber).then(function (info) {
         var symbol = String(info.symbol || '').toUpperCase();
@@ -117,7 +120,7 @@
     // 21 byte: prefix 0x41 + 20 byte address
     return hex.slice(-40).toLowerCase();
   }
-  function verifyTron(txhash, expectedAmount, expectedAddress) {
+  function verifyTron(txhash, expectedAmount, expectedAddress, senderAddress) {
     return fetch('https://api.trongrid.io/v1/transactions/' + encodeURIComponent(txhash))
       .then(function (r) { if (!r.ok) throw new Error('TronGrid HTTP ' + r.status); return r.json(); })
       .then(function (j) {
@@ -125,13 +128,17 @@
         var t = j[0];
         if (!t.ret || !t.ret[0] || t.ret[0].contractRet !== 'SUCCESS') return result(false, 'Transaksi gagal di jaringan Tron.');
         var target = tronAddressToHex(expectedAddress);
+        var sender = senderAddress ? tronAddressToHex(senderAddress) : '';
         var logs = t.log || [];
         var hit = null;
         for (var i = 0; i < logs.length; i++) {
           var topics = logs[i].topics || [];
-          if (cleanHex(topics[0]) === cleanHex(TRANSFER_TOPIC) && addressFromTopic(topics[2]) === target) { hit = logs[i]; break; }
+          if (cleanHex(topics[0]) !== cleanHex(TRANSFER_TOPIC)) continue;
+          if (addressFromTopic(topics[2]) !== target) continue;
+          if (sender && addressFromTopic(topics[1]) !== sender) continue;
+          hit = logs[i]; break;
         }
-        if (!hit) return result(false, 'Tidak ada transfer TRC20 ke alamat pembayaran pada transaksi ini.');
+        if (!hit) return result(false, sender ? 'Alamat pengirim tidak cocok / tidak ada transfer ke alamat pembayaran.' : 'Tidak ada transfer TRC20 ke alamat pembayaran pada transaksi ini.');
         var amount = fromWei(hit.data, 6);
         if (!near(amount, expectedAmount)) return result(false, 'Nominal tidak sesuai. Diterima ' + amount.toFixed(6) + ', seharusnya ' + expectedAmount.toFixed(6) + '.', amount, 'TRC20');
         return result(true, 'Pembayaran terverifikasi: ' + amount.toFixed(6) + ' USDT/USDC (TRC20) diterima.', amount, 'TRC20');
@@ -139,7 +146,7 @@
       .catch(function (e) { return result(false, 'Gagal memeriksa transaksi Tron: ' + e.message); });
   }
 
-  function verifySolana(txhash, expectedAmount, expectedAddress) {
+  function verifySolana(txhash, expectedAmount, expectedAddress, senderAddress) {
     var params = [txhash, {
       encoding: 'jsonParsed', commitment: 'confirmed', maxSupportedTransactionVersion: 1
     }];
@@ -150,7 +157,15 @@
       if (tx.meta && tx.meta.err) return result(false, 'Transaksi gagal di jaringan Solana.');
       var pre = (tx.meta && tx.meta.preTokenBalances) || [];
       var post = (tx.meta && tx.meta.postTokenBalances) || [];
-      var expectedUnits = Math.round(expectedAmount * 1000000);
+      if (senderAddress){
+        var senderFound = pre.some(function (p) { return p.owner === senderAddress; });
+        if (!senderFound && tx.transaction && tx.transaction.message && tx.transaction.message.accountKeys){
+          senderFound = tx.transaction.message.accountKeys.some(function (k) {
+            return (typeof k === 'string' ? k : k.pubkey) === senderAddress && (typeof k !== 'string' ? k.signer : true);
+          });
+        }
+        if (!senderFound) return result(false, 'Alamat pengirim tidak cocok dengan TxHash ini.');
+      }
       var best = 0, token = null;
       post.forEach(function (p) {
         if (p.owner !== expectedAddress) return;
@@ -170,13 +185,14 @@
   }
 
   global.CryptoVerify = {
-    verify: function (chain, txhash, expectedAmount, expectedAddress) {
+    verify: function (chain, txhash, expectedAmount, expectedAddress, senderAddress) {
       var hash = String(txhash || '').trim();
+      var sender = String(senderAddress || '').trim();
       if (!hash) return Promise.resolve(result(false, 'TxHash wajib diisi.'));
       if (!(expectedAmount > 0)) return Promise.resolve(result(false, 'Nominal tidak valid.'));
-      if (chain === 'tron') return verifyTron(hash, expectedAmount, expectedAddress);
-      if (chain === 'sol') return verifySolana(hash, expectedAmount, expectedAddress);
-      if (RPC[chain]) return verifyEvm(chain, hash, expectedAmount, expectedAddress);
+      if (chain === 'tron') return verifyTron(hash, expectedAmount, expectedAddress, sender);
+      if (chain === 'sol') return verifySolana(hash, expectedAmount, expectedAddress, sender);
+      if (RPC[chain]) return verifyEvm(chain, hash, expectedAmount, expectedAddress, sender);
       return Promise.resolve(result(false, 'Jaringan tidak dikenal.'));
     },
     chains: ['bnb', 'tron', 'eth', 'plasma', 'sol']
