@@ -763,7 +763,27 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
   function handleTxnDoc(doc) {
     if (!doc.exists) return;
     var d = doc.data();
-    if (d.status === "confirmed") showSuccess(d);
+    if (d.status === "confirmed"){
+      if (d.type === "extension" && d.extensionOf){
+        var baseRef = db.collection("transactions").doc(d.extensionOf);
+        var guard = 0;
+        (function walk(){
+          baseRef.get().then(function(baseSnap){
+            var baseData = baseSnap.exists ? baseSnap.data() : null;
+            if (baseData && baseData.type === "extension" && baseData.extensionOf && guard++ < 8){
+              baseRef = db.collection("transactions").doc(baseData.extensionOf);
+              walk();
+              return;
+            }
+            if (baseSnap.exists){
+              currentTxnId = baseSnap.id;
+              currentTxnCode = baseData.transactionId || currentTxnCode;
+              showSuccess(baseData);
+            } else showSuccess(d);
+          }).catch(function(){ showSuccess(d); });
+        })();
+      } else showSuccess(d);
+    }
     else if (d.status === "claimed") {
       setStatus("claimed", "Menunggu konfirmasi admin…");
       claimBtn.style.display = "none";
@@ -1025,14 +1045,26 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
         || main[0] || list[0] || null;
     }
     function resolveParent(data){
-      if (!data || data.type !== "extension" || !data.extensionOf) return Promise.resolve(data);
-      return db.collection("transactions").doc(data.extensionOf).get().then(function(s){
-        if (!s.exists) return data;
-        var p = s.data();
-        p._extAmount = Number(data.amount) || 0;
-        p._extNote = "Termasuk perpanjangan +" + (Number(data.hours) || 0) + " jam (" + (data.transactionId || "-") + ")";
-        return p;
-      }).catch(function(){ return data; });
+      var extraAmount = 0, extraHours = 0, ids = [], guard = 0, cur = data;
+      return new Promise(function(resolve){
+        (function walk(){
+          if (!cur || cur.type !== "extension" || !cur.extensionOf || guard++ > 8){
+            if (extraAmount && cur){
+              cur._extAmount = extraAmount;
+              cur._extNote = "Termasuk perpanjangan +" + extraHours + " jam (" + ids.join(", ") + ")";
+            }
+            resolve(cur || data);
+            return;
+          }
+          extraAmount += Number(cur.amount) || 0;
+          extraHours += Number(cur.hours) || 0;
+          ids.push(cur.transactionId || "-");
+          db.collection("transactions").doc(cur.extensionOf).get().then(function(s){
+            cur = s.exists ? s.data() : null;
+            walk();
+          }).catch(function(){ cur = null; walk(); });
+        })();
+      });
     }
     queryAll(digits.length >= 9 ? "whatsapp" : "transactionId", digits.length >= 9 ? waFormat(raw) : raw.toUpperCase())
       .then(function(list){ return list.length ? list : (digits.length >= 9 ? queryAll("whatsapp", digits) : []); })

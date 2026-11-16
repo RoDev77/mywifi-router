@@ -228,17 +228,21 @@
   }
 
   async function showResult(data) {
-    if (data && data.type === 'extension' && data.extensionOf){
+    let extraAmount = 0, extraHours = 0, ids = [], guard = 0, cur = data;
+    while (cur && cur.type === 'extension' && cur.extensionOf && guard++ < 8){
+      extraAmount += Number(cur.amount) || 0;
+      extraHours += Number(cur.hours) || 0;
+      ids.push(cur.transactionId || '-');
       try{
-        const snap = await db.collection('transactions').doc(data.extensionOf).get();
-        if (snap.exists){
-          const parent = snap.data();
-          parent._extAmount = Number(data.amount) || 0;
-          parent._extNote = 'Termasuk perpanjangan +' + (Number(data.hours) || 0) + ' jam (' + (data.transactionId || '-') + ')';
-          data = parent;
-        }
-      }catch(e){ console.error(e); }
+        const snap = await db.collection('transactions').doc(cur.extensionOf).get();
+        cur = snap.exists ? snap.data() : null;
+      }catch(e){ cur = null; }
     }
+    if (extraAmount && cur){
+      cur._extAmount = extraAmount;
+      cur._extNote = 'Termasuk perpanjangan +' + extraHours + ' jam (' + ids.join(', ') + ')';
+    }
+    if (cur) data = cur;
     clearInterval(expiryTimer);
     currentId = data.transactionId || "-";
     var label = data.status === "expired" ? "Selesai" : (data.status === "confirmed" ? "Terkonfirmasi" : (data.status === "claimed" ? "Menunggu konfirmasi" : "Menunggu pembayaran"));

@@ -909,6 +909,41 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
     applyTxnFilters();
   }
 
+  async function applyExtension(data, adminUsername){
+    if (!data || data.type !== 'extension' || !data.extensionOf) return;
+    try{
+      let ref = db.collection('transactions').doc(data.extensionOf);
+      let snap = await ref.get();
+      let guard = 0;
+      //Telusuri rantai sampai ke transaksi induk (bukan perpanjangan lain)
+      while (snap.exists && snap.data().type === 'extension' && snap.data().extensionOf && guard++ < 8){
+        ref = db.collection('transactions').doc(snap.data().extensionOf);
+        snap = await ref.get();
+      }
+      if (!snap.exists) return;
+      const base = snap.data();
+      const upd = {
+        hours: firebase.firestore.FieldValue.increment(Number(data.hours) || 0),
+        amount: firebase.firestore.FieldValue.increment(Number(data.amount) || 0),
+        extendedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      if (!base.startedAt){
+        upd.startedAt = firebase.firestore.FieldValue.serverTimestamp();
+        upd.startedBy = adminUsername || 'admin';
+      }
+      if (base.status === 'expired'){
+        upd.status = 'confirmed';
+        if (!upd.startedAt) upd.startedAt = firebase.firestore.FieldValue.serverTimestamp();
+      }
+      await ref.update(upd);
+      try{
+        await db.collection('transactions').doc(data.extensionOf).update({
+          startedAt: base.startedAt || firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }catch(e){ /* induk langsung opsional */ }
+    }catch(err){ console.error('Gagal menerapkan perpanjangan:', err); }
+  }
+
   async function confirmTxn(id, adminUsername, btn){
     btn.disabled = true;
     btn.textContent = '...';
@@ -919,32 +954,7 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
         confirmedAt: firebase.firestore.FieldValue.serverTimestamp(),
         confirmedBy: 'admin'
       });
-      if (data && data.type === 'extension' && data.extensionOf && Number(data.hours) > 0){
-        try{
-          const baseRef = db.collection('transactions').doc(data.extensionOf);
-          const snap = await baseRef.get();
-          if (snap.exists){
-            const upd = {
-              hours: firebase.firestore.FieldValue.increment(Number(data.hours)),
-              amount: firebase.firestore.FieldValue.increment(Number(data.amount) || 0),
-              extendedAt: firebase.firestore.FieldValue.serverTimestamp()
-            };
-            const base = snap.data();
-          if (!base.startedAt){
-            upd.startedAt = firebase.firestore.FieldValue.serverTimestamp();
-            upd.startedBy = adminUsername || 'admin';
-          }
-          if (base.status === 'expired'){
-            upd.status = 'confirmed';
-            if (!upd.startedAt) upd.startedAt = firebase.firestore.FieldValue.serverTimestamp();
-          }
-          await baseRef.update(upd);
-          await db.collection('transactions').doc(id).update({
-            startedAt: base.startedAt || firebase.firestore.FieldValue.serverTimestamp()
-          });
-        }
-        }catch(e){ console.error('Gagal menerapkan perpanjangan:', e); }
-      }
+      await applyExtension(data, adminUsername);
     }catch(err){
       console.error('Gagal konfirmasi transaksi:', err);
       btn.disabled = false;
@@ -1095,6 +1105,7 @@ html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::pla
           confirmedAt: firebase.firestore.FieldValue.serverTimestamp(),
           confirmedBy: 'admin'
         });
+        await applyExtension(d.data(), 'admin');
         ok++;
       }catch(err){ console.error(err); }
     }
