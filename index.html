@@ -617,6 +617,7 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
         <input class="hash-input" id="txHashInput" type="text" autocomplete="off" placeholder="Tempel TxHash transaksi crypto">
         <button class="verify-btn" id="verifyBtn" type="button">Verifikasi &amp; Konfirmasi</button>
         <p class="crypto-status" id="cryptoStatus">Menunggu transfer…</p>
+        <a class="download-link" id="txExplorer" href="#" target="_blank" rel="noopener">Lihat transaksi di explorer ↗</a>
       </div>
       <button class="cancel-btn" id="cryptoCancelBtn" type="button">Batalkan pesanan ini</button>
       <button class="secondary" id="cryptoNewBtn" type="button">Transaksi Baru</button>
@@ -788,6 +789,13 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
   };
   var cryptoConfig = Object.assign({}, CRYPTO_DEFAULTS);
   var CHAIN_LABELS = { bnb: "BNB Smart Chain", tron: "Tron (TRC20)", eth: "Ethereum", plasma: "Plasma", sol: "Solana" };
+  var EXPLORERS = {
+    bnb: "https://bscscan.com/tx/",
+    tron: "https://tronscan.org/#/transaction/",
+    eth: "https://etherscan.io/tx/",
+    plasma: "https://plasmascan.to/tx/",
+    sol: "https://solscan.io/tx/"
+  };
   function cryptoExpected(){
     var rate = Number(cryptoConfig.rate) || 16000;
     return Math.round((total() / rate) * 1000000) / 1000000;
@@ -1225,6 +1233,12 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
     cryptoChain = chip.dataset.chain;
     document.querySelectorAll(".chain-chip").forEach(function(c){ c.classList.toggle("on", c === chip); });
     renderCrypto();
+  });
+  document.getElementById("txExplorer").addEventListener("click", function(e){
+    e.preventDefault();
+    var hash = document.getElementById("txHashInput").value.trim();
+    if (!hash){ toast("Masukkan TxHash dulu."); return; }
+    window.open((EXPLORERS[cryptoChain] || "") + encodeURIComponent(hash), "_blank", "noopener");
   });
   document.getElementById("verifyBtn").addEventListener("click", function(){
     if (!currentTxnId || !db){ toast("Tidak ada transaksi aktif."); return; }

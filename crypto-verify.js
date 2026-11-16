@@ -12,7 +12,10 @@
     eth: 'https://ethereum-rpc.publicnode.com',
     plasma: 'https://rpc.plasma.to'
   };
-  var SOL_RPC = 'https://api.mainnet-beta.solana.com';
+  var SOL_RPCS = [
+    'https://solana-rpc.publicnode.com',
+    'https://api.mainnet-beta.solana.com'
+  ];
   var USDC_SOL = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
   var USDT_SOL = 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB';
 
@@ -137,9 +140,12 @@
   }
 
   function verifySolana(txhash, expectedAmount, expectedAddress) {
-    return rpc(SOL_RPC, 'getTransaction', [txhash, {
-      encoding: 'jsonParsed', commitment: 'confirmed', maxSupportedTransactionVersion: 0
-    }]).then(function (tx) {
+    var params = [txhash, {
+      encoding: 'jsonParsed', commitment: 'confirmed', maxSupportedTransactionVersion: 1
+    }];
+    return rpc(SOL_RPCS[0], 'getTransaction', params)
+      .catch(function () { return rpc(SOL_RPCS[1], 'getTransaction', params); })
+      .then(function (tx) {
       if (!tx) return result(false, 'Transaksi belum ditemukan di jaringan Solana.');
       if (tx.meta && tx.meta.err) return result(false, 'Transaksi gagal di jaringan Solana.');
       var pre = (tx.meta && tx.meta.preTokenBalances) || [];
