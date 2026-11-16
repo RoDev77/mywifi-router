@@ -21,6 +21,11 @@ service cloud.firestore {
       allow read, create, update: if true;
     }
 
+    // Catatan pemakaian voucher: 1 kali per nomor WhatsApp.
+    match /voucherUses/{doc} {
+      allow read, create: if true;
+    }
+
     // Daftar admin (dibaca saat pengecekan role Discord).
     match /users/{doc} {
       allow read: if true;

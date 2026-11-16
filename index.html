@@ -687,7 +687,7 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
   var successView = document.getElementById("successView");
 
   var currentTxnId = null, currentTxnCode = null, unsubscribeTxn = null, currentWa = "";
-  var extensionOf = null, voucher = null, extendHours = 1;
+  var extensionOf = null, voucher = null, voucherWa = "", extendHours = 1;
 
   function rp(n) { return "Rp" + n.toLocaleString("id-ID"); }
   function subtotal() { return hours * HARGA; }
@@ -716,7 +716,7 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
     if (unsubscribeTxn) { unsubscribeTxn(); unsubscribeTxn = null; }
     currentTxnId = null; currentTxnCode = null;
     extensionOf = null;
-    voucher = null;
+    voucher = null; voucherWa = "";
     var vi = document.getElementById("voucherInput");
     if (vi) vi.value = "";
     var vm = document.getElementById("voucherMsg");
@@ -745,6 +745,11 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
     var hint = document.getElementById("devHint");
     hint.classList.remove("warn");
     hint.textContent = "Nomor ini dipakai untuk mengirim SSID dan password WiFi setelah pembayaranmu terkonfirmasi, termasuk informasi penting lainnya.";
+    if (voucher && waFormat(dev.value) !== voucherWa){
+      voucher = null; voucherWa = "";
+      setVoucherMsg("Nomor WhatsApp berubah — kode promo dilepas.", false);
+      render();
+    }
   });
 
   function setStatus(state, msg) {
@@ -845,7 +850,9 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
 
     currentTxnId = null;
     if (db) {
-      db.collection("transactions").add({
+      var txnRef = db.collection("transactions").doc();
+      var batch = db.batch();
+      batch.set(txnRef, {
         transactionId: currentTxnCode,
         amount: total(),
         merchantName: activeConfig.merchantName,
@@ -857,18 +864,28 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
         type: extensionOf ? "extension" : "wifi",
         ...(extensionOf ? { extensionOf: extensionOf } : {}),
         ...(voucher ? { voucher: voucher.code, discount: voucher.amount } : {})
-      }).then(function (ref) {
+      });
+      if (voucher){
+        batch.create(db.collection("voucherUses").doc(voucher.code + "_" + currentWa), {
+          code: voucher.code,
+          whatsapp: currentWa,
+          transactionId: currentTxnCode,
+          amount: voucher.amount,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+      batch.commit().then(function () {
         if (voucher && db){
           db.collection("vouchers").doc(voucher.code).update({
             used: firebase.firestore.FieldValue.increment(1)
           }).catch(function () {});
         }
-        currentTxnId = ref.id;
+        currentTxnId = txnRef.id;
         saveSession();
         subscribeToTxn(currentTxnId);
       }).catch(function (e) {
         console.error("Gagal simpan transaksi:", e);
-        setStatus("error", "Gagal menyimpan transaksi. Screenshot QR ini untuk jaga-jaga.");
+        setStatus("error", "Gagal menyimpan transaksi — kode promo mungkin sudah dipakai nomor ini. Screenshot QR ini untuk jaga-jaga.");
         claimBtn.style.display = "none";
       });
     } else {
@@ -1114,25 +1131,41 @@ html[data-theme="dark"] .voucher-row input::placeholder{color:#708f98}
   }
   function applyVoucher(){
     var code = document.getElementById("voucherInput").value.trim().toUpperCase();
-    if (!code){ voucher = null; setVoucherMsg(""); render(); return; }
+    if (!code){
+      voucher = null; voucherWa = ""; setVoucherMsg(""); render(); return;
+    }
+    var wa = waFormat(dev.value);
+    if (!/^62\d{8,13}$/.test(wa)){
+      voucher = null; voucherWa = "";
+      setVoucherMsg("Isi nomor WhatsApp dulu sebelum pakai kode promo.", false); render(); return;
+    }
     if (!db){ setVoucherMsg("Koneksi database belum tersedia.", false); return; }
     db.collection("vouchers").doc(code).get().then(function (doc){
       if (!doc.exists || doc.data().active === false){
-        voucher = null; setVoucherMsg("Kode promo tidak ditemukan.", false); render(); return;
+        voucher = null; voucherWa = ""; setVoucherMsg("Kode promo tidak ditemukan.", false); render(); return null;
       }
       var v = doc.data();
       if (Number(v.quota) >= 0 && Number(v.used || 0) >= Number(v.quota)){
-        voucher = null; setVoucherMsg("Kuota kode promo sudah habis.", false); render(); return;
+        voucher = null; voucherWa = ""; setVoucherMsg("Kuota kode promo sudah habis.", false); render(); return null;
       }
       var sub = subtotal();
       if (v.minAmount && sub < Number(v.minAmount)){
-        voucher = null; setVoucherMsg("Minimal belanja " + rp(v.minAmount), false); render(); return;
+        voucher = null; voucherWa = ""; setVoucherMsg("Minimal belanja " + rp(v.minAmount), false); render(); return null;
       }
-      var amount = v.type === "percent" ? Math.round(sub * Number(v.value) / 100) : Number(v.value);
-      amount = Math.max(0, Math.min(amount, sub));
-      voucher = { code: code, amount: amount };
-      setVoucherMsg("✓ " + code + " — hemat " + rp(amount), true);
-      render();
+      return db.collection("voucherUses").doc(code + "_" + wa).get().then(function (used){
+        if (used.exists){
+          voucher = null; voucherWa = "";
+          setVoucherMsg("Kode promo ini sudah dipakai nomor WhatsApp " + dev.value.trim() + ".", false);
+          render();
+          return;
+        }
+        var amount = v.type === "percent" ? Math.round(sub * Number(v.value) / 100) : Number(v.value);
+        amount = Math.max(0, Math.min(amount, sub));
+        voucher = { code: code, amount: amount };
+        voucherWa = wa;
+        setVoucherMsg("✓ " + code + " — hemat " + rp(amount) + " (1× per WhatsApp)", true);
+        render();
+      });
     }).catch(function(){ setVoucherMsg("Gagal memeriksa kode promo.", false); });
   }
   document.getElementById("voucherBtn").addEventListener("click", applyVoucher);

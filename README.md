@@ -10,6 +10,8 @@ Situs **R STUDIO LABS — Sewa WiFi** (Rp5.000/jam), terpasang di proyek Vercel
   - Theme toggle terang/gelap, nomor WhatsApp tersimpan, cek status + hitung
     mundur, FAQ, toast, salin ID, transaksi pulih setelah refresh.
   - **Kode promo** (voucher) dengan diskon Rp / persen, kuota, dan minimal belanja.
+    Pemakaian dibatasi **1 kali per nomor WhatsApp** melalui koleksi
+    `voucherUses` (nomor berubah ⇒ kode otomatis dilepas).
   - **Perpanjang sewa** langsung dari halaman sukses (+1/+2/+3/+5 jam).
   - Progress bar sisa waktu (hijau → kuning → merah) dan tombol **Bagikan Status**.
   - Installable via PWA (lihat bawah).
